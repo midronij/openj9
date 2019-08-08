@@ -504,10 +504,7 @@ static void jitHookInitializeSendTarget(J9HookInterface * * hook, UDATA eventNum
                // The danger is that very small applications that don't even get to AOT 200 methods
                // may think that the runs are always cold
                if (TR::Options::getCmdLineOptions()->getOption(TR_LowerCountsForAotCold) &&
-                   compInfo->isWarmSCC() == TR_no &&
-                   compInfo->getPersistentInfo()->getElapsedTime() <= (uint64_t)compInfo->getPersistentInfo()->getClassLoadingPhaseGracePeriod() &&
-                   TR::Options::isQuickstartDetected() &&
-                   fe->isClassLibraryMethod((TR_OpaqueMethodBlock *)method)) // is this an expensive call here?
+                   compInfo->isWarmSCC() == TR_no)
                   {
                   // TODO: modify the function that reads a specified count such that
                   // if the user specifies a count or bcount on the command line that is obeyed
