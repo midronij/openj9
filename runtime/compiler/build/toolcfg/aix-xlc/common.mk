@@ -205,13 +205,13 @@ IPP_FLAGS+=$(IPP_FLAGS_EXTRA)
 #
 SOLINK_CMD?=$(SHAREDLIB)
 
-SOLINK_FLAGS+=-p0 -bloadmap:lmap -brtl -bnoentry -bnolibpath
+SOLINK_FLAGS+=-p0 -bloadmap:lmap -brtl -bnoentry -bnolibpath 
 
 ifeq ($(HOST_BITS),64)
     SOLINK_FLAGS+=-X64
 endif
 
-SOLINK_SLINK+=$(PRODUCT_SLINK) m j9thr$(J9_VERSION) j9hookable$(J9_VERSION)
+SOLINK_SLINK+=$(PRODUCT_SLINK) m j9thr$(J9_VERSION) j9hookable$(J9_VERSION) c++
 
 SOLINK_LIBPATH+=$(PRODUCT_LIBPATH)
 
