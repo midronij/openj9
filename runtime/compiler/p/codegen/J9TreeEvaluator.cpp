@@ -560,16 +560,20 @@ static void VMnonNullSrcWrtBarCardCheckEvaluator(TR::Node *node, TR::Register *s
 
       TR::Register *metaReg = cg->getMethodMetaDataRegister();
 
+      //registers for old/new space boundaries
+      TR::Register *bound1 = cg->allocateRegister();
+      TR::Register *bound2 = cg->allocateRegister();
+
       // dstReg - heapBaseForBarrierRange0
       TR::Register *tempRegister = (temp4Reg != NULL) ? temp4Reg : temp3Reg;
-      generateTrg1MemInstruction(cg,TR::InstOpCode::Op_load, node, tempRegister,
+      generateTrg1MemInstruction(cg,TR::InstOpCode::Op_load, node, bound1,
             new (cg->trHeapMemory()) TR::MemoryReference(metaReg, offsetof(J9VMThread, heapBaseForBarrierRange0), TR::Compiler->om.sizeofReferenceAddress(), cg));
-      generateTrg1Src2Instruction(cg, TR::InstOpCode::subf, node, temp3Reg, tempRegister, dstReg);
+      generateTrg1Src2Instruction(cg, TR::InstOpCode::subf, node, temp3Reg, bound1, dstReg);
 
       // if (temp3Reg >= heapSizeForBarrierRage0), object not in the tenured area
-      generateTrg1MemInstruction(cg,TR::InstOpCode::Op_load, node, temp2Reg,
+      generateTrg1MemInstruction(cg,TR::InstOpCode::Op_load, node, bound2,
             new (cg->trHeapMemory()) TR::MemoryReference(metaReg, offsetof(J9VMThread, heapSizeForBarrierRange0), TR::Compiler->om.sizeofReferenceAddress(), cg));
-      generateTrg1Src2Instruction(cg,TR::InstOpCode::Op_cmpl, node, condReg, temp3Reg, temp2Reg);
+      generateTrg1Src2Instruction(cg,TR::InstOpCode::Op_cmpl, node, condReg, temp3Reg, bound2);
       generateConditionalBranchInstruction(cg, TR::InstOpCode::bge, node, doneLabel, condReg);
 
       if (!flagsInTemp1)
@@ -621,13 +625,9 @@ static void VMnonNullSrcWrtBarCardCheckEvaluator(TR::Node *node, TR::Register *s
          if (gcMode == gc_modron_wrtbar_cardmark_and_oldcheck)
             {
             //check for src in new space
-            generateTrg1MemInstruction(cg,TR::InstOpCode::Op_load, node, temp2Reg,
-                  new (cg->trHeapMemory()) TR::MemoryReference(metaReg, offsetof(J9VMThread, heapBaseForBarrierRange0), TR::Compiler->om.sizeofReferenceAddress(), cg));
-            generateTrg1Src2Instruction(cg, TR::InstOpCode::subf, node, temp2Reg, temp2Reg, srcReg);
+            generateTrg1Src2Instruction(cg, TR::InstOpCode::subf, node, temp2Reg, bound1, srcReg);
 
-            generateTrg1MemInstruction(cg,TR::InstOpCode::Op_load, node, temp3Reg,
-                  new (cg->trHeapMemory()) TR::MemoryReference(metaReg, offsetof(J9VMThread, heapSizeForBarrierRange0), TR::Compiler->om.sizeofReferenceAddress(), cg));
-            generateTrg1Src2Instruction(cg,TR::InstOpCode::Op_cmpl, node, condReg, temp2Reg, temp3Reg);
+            generateTrg1Src2Instruction(cg,TR::InstOpCode::Op_cmpl, node, condReg, temp2Reg, bound2);
             generateConditionalBranchInstruction(cg, TR::InstOpCode::blt, node, doneLabel, condReg);
             }
          }
@@ -650,6 +650,9 @@ static void VMnonNullSrcWrtBarCardCheckEvaluator(TR::Node *node, TR::Register *s
             generateConditionalBranchInstruction(cg, TR::InstOpCode::blt, node, doneLabel, condReg);
             }
          }
+
+      cg->stopUsingRegister(bound1);
+      cg->stopUsingRegister(bound2);
 
       TR::Instruction * i = generateTrg1Src1ImmInstruction(cg, TR::InstOpCode::andi_r, node, temp2Reg, temp1Reg, condReg, J9_OBJECT_HEADER_REMEMBERED_MASK_FOR_TEST);
       generateConditionalBranchInstruction(cg, TR::InstOpCode::bne, node, doneLabel, condReg);
