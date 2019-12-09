@@ -561,6 +561,7 @@ static void VMnonNullSrcWrtBarCardCheckEvaluator(TR::Node *node, TR::Register *s
       TR::Register *metaReg = cg->getMethodMetaDataRegister();
 
       //registers for old/new space boundaries
+      traceMsg(TR::comp(), "Registers for old/new space boundaries allocated");
       TR::Register *bound1 = cg->allocateRegister();
       TR::Register *bound2 = cg->allocateRegister();
 
@@ -624,6 +625,7 @@ static void VMnonNullSrcWrtBarCardCheckEvaluator(TR::Node *node, TR::Register *s
          if (gcMode == gc_modron_wrtbar_cardmark_and_oldcheck)
             {
             //check for src in new space
+            traceMsg(TR::comp(), "Redundant loads skipped (1)");
             generateTrg1Src2Instruction(cg, TR::InstOpCode::subf, node, temp2Reg, bound1, srcReg);
 
             generateTrg1Src2Instruction(cg,TR::InstOpCode::Op_cmpl, node, condReg, temp2Reg, bound2);
@@ -635,6 +637,7 @@ static void VMnonNullSrcWrtBarCardCheckEvaluator(TR::Node *node, TR::Register *s
          if (gcMode == gc_modron_wrtbar_cardmark_and_oldcheck || gcMode == gc_modron_wrtbar_oldcheck)
             {
             //check for src in new space
+            traceMsg(TR::comp(), "Redundant loads skipped (2)");
             generateTrg1Src2Instruction(cg, TR::InstOpCode::subf, node, temp3Reg, bound1, srcReg);
             generateTrg1Src2Instruction(cg,TR::InstOpCode::Op_cmpl, node, condReg, temp3Reg, bound2);
             generateConditionalBranchInstruction(cg, TR::InstOpCode::blt, node, doneLabel, condReg);
