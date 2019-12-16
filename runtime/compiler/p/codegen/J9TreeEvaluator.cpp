@@ -520,6 +520,13 @@ static void VMnonNullSrcWrtBarCardCheckEvaluator(TR::Node *node, TR::Register *s
          || comp->getOptions()->realTimeGC());
    bool temp3RegIsNull = (temp3Reg == NULL);
 
+   //registers for old/new space boundaries
+   TR::Register *bound1 = cg->allocateRegister();
+   TR::Register *bound2 = cg->allocateRegister();
+
+   deps->addPostCondition(bound1, TR::RealRegister::NoReg);
+   deps->addPostCondition(bound2, TR::RealRegister::NoReg);
+
    TR_ASSERT(doWrtBar == true, "VMnonNullSrcWrtBarCardCheckEvaluator: Invalid call to VMnonNullSrcWrtBarCardCheckEvaluator\n");
 
    if (temp3RegIsNull)
@@ -560,10 +567,8 @@ static void VMnonNullSrcWrtBarCardCheckEvaluator(TR::Node *node, TR::Register *s
 
       TR::Register *metaReg = cg->getMethodMetaDataRegister();
 
-      //registers for old/new space boundaries
-      traceMsg(TR::comp(), "Registers for old/new space boundaries allocated");
-      TR::Register *bound1 = cg->allocateRegister();
-      TR::Register *bound2 = cg->allocateRegister();
+      TR::LabelSymbol* startICF = generateLabelSymbol(cg);
+      startICF->setStartInternalControlFlow();
 
       // dstReg - heapBaseForBarrierRange0
       generateTrg1MemInstruction(cg,TR::InstOpCode::Op_load, node, bound1,
@@ -599,6 +604,9 @@ static void VMnonNullSrcWrtBarCardCheckEvaluator(TR::Node *node, TR::Register *s
             TR_ASSERT(J9_PRIVATE_FLAGS_CONCURRENT_MARK_ACTIVE >= 0x00010000 && J9_PRIVATE_FLAGS_CONCURRENT_MARK_ACTIVE <= 0x80000000,
                   "Concurrent mark active Value assumption broken.");
             generateTrg1Src1ImmInstruction(cg, TR::InstOpCode::andis_r, node, temp2Reg, temp2Reg, condReg, J9_PRIVATE_FLAGS_CONCURRENT_MARK_ACTIVE >> 16);
+            
+            //start of control flow
+            generateLabelInstruction(cg, TR::InstOpCode::label, node, startICF);
             generateConditionalBranchInstruction(cg, TR::InstOpCode::beq, node, noChkLabel, condReg);
             }
 
@@ -620,7 +628,11 @@ static void VMnonNullSrcWrtBarCardCheckEvaluator(TR::Node *node, TR::Register *s
          generateMemSrc1Instruction(cg, TR::InstOpCode::stb, node, new (cg->trHeapMemory()) TR::MemoryReference(temp2Reg, temp3Reg, 1, cg), temp4Reg);
 
          if (noChkLabel)
+         {
+            //end of control flow
+            noChkLabel->setEndInternalControlFlow();
             generateLabelInstruction(cg, TR::InstOpCode::label, node, noChkLabel);
+         }
 
          if (gcMode == gc_modron_wrtbar_cardmark_and_oldcheck)
             {
@@ -643,9 +655,6 @@ static void VMnonNullSrcWrtBarCardCheckEvaluator(TR::Node *node, TR::Register *s
             generateConditionalBranchInstruction(cg, TR::InstOpCode::blt, node, doneLabel, condReg);
             }
          }
-
-      cg->stopUsingRegister(bound1);
-      cg->stopUsingRegister(bound2);
 
       TR::Instruction * i = generateTrg1Src1ImmInstruction(cg, TR::InstOpCode::andi_r, node, temp2Reg, temp1Reg, condReg, J9_OBJECT_HEADER_REMEMBERED_MASK_FOR_TEST);
       generateConditionalBranchInstruction(cg, TR::InstOpCode::bne, node, doneLabel, condReg);
@@ -703,6 +712,9 @@ static void VMnonNullSrcWrtBarCardCheckEvaluator(TR::Node *node, TR::Register *s
    generateDepImmSymInstruction(cg, TR::InstOpCode::bl, node, (uintptr_t) wbRef->getSymbol()->castToMethodSymbol()->getMethodAddress(),
          new (cg->trHeapMemory()) TR::RegisterDependencyConditions((uint8_t) 0, 0, cg->trMemory()), wbRef, NULL);
    cg->machine()->setLinkRegisterKilled(true);
+
+   cg->stopUsingRegister(bound1);
+   cg->stopUsingRegister(bound2);
 
    if (temp3RegIsNull && temp3Reg)
       cg->stopUsingRegister(temp3Reg);
@@ -808,7 +820,7 @@ static void VMwrtbarEvaluator(TR::Node *node, TR::Register *srcReg, TR::Register
       numRegs += 3;
 
    if (doWrtBar || doCrdMrk)
-      numRegs += 2;
+      numRegs += 4; //two extra deps for space boundaries
 
    if ((!doWrtBar && !doCrdMrk) || (node->getOpCode().isWrtBar() && node->skipWrtBar()))
       {
