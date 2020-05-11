@@ -10926,7 +10926,7 @@ static TR::Register *inlineConcurrentLinkedQueueTMOffer(TR::Node *node, TR::Code
 
       VMnonNullSrcWrtBarCardCheckEvaluator(node, nReg, pReg, cndReg, qReg, retryCountReg, temp3Reg, temp4Reg, wrtbar1Donelabel, conditions, NULL, false, false, cg, false);
       // ALG: *** wrtbar1Donelabel
-      generateLabelInstruction(cg, TR::InstOpCode::label, node, wrtbar1Donelabel);
+      generateDepLabelInstruction(cg, TR::InstOpCode::label, node, wrtbar1Donelabel, conditions);
 
       generateTrg1Src1Instruction(cg, TR::InstOpCode::mr, node, pReg, objReg);
 
