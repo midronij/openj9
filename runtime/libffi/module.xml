@@ -32,7 +32,7 @@ SPDX-License-Identifier: EPL-2.0 OR Apache-2.0 OR GPL-2.0 WITH Classpath-excepti
 			<makefilestub data="UMA_OBJECTS:= $(filter-out dlmalloc$(UMA_DOT_O), $(UMA_OBJECTS))" />
 
 			<!-- override makefile default rule for building .S files -->
-			<makefilestub data="COMPILE.S=$(CC) $(addprefix -Xassembler ,$(ASFLAGS)) $(CPPFLAGS) $(TARGET_MACH) -c">
+			<makefilestub data="COMPILE.S=$(CC) $(addprefix -Xassembler ,-mcpu=pwr8) $(CPPFLAGS) $(TARGET_MACH) -c">
 				<include-if condition="spec.linux.*" />
 				<include-if condition="spec.osx_x86.*" />
 				<exclude-if condition="spec.flags.arch_power and not spec.flags.env_gcc or spec.flags.arch_s390" />
