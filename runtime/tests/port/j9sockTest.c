@@ -208,7 +208,7 @@ j9sock_test11_getnameinfo(struct J9PortLibrary *portLibrary)
 	    	outputErrorMessage(PORTTEST_ERROR_ARGS, "error calling j9sock_getaddrinfo_family: %s\n", j9error_last_error_message());
 	    	return reportTestExit(portLibrary, testName);
 	    }
-	    if ((family == J9ADDR_FAMILY_AFINET4)){
+	    if (family == J9ADDR_FAMILY_AFINET4){
 	    	if (0 != j9sock_getaddrinfo_address(&res, (U_8 *) nipAddr, i, &scope_id)){
 	    		outputErrorMessage(PORTTEST_ERROR_ARGS, "error calling j9sock_getaddrinfo_address: %s\n", j9error_last_error_message());
 	    		return reportTestExit(portLibrary, testName);
