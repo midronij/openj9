@@ -155,7 +155,13 @@ class TreeLowering : public TR::Optimization
        */
       void addTransformation(Transformer* transformer, TR::Node* const node, TR::TreeTop* const tt)
          {
-         _transformationQueue.push_back(Transformation(transformer, node, tt));
+            Transformation transformation;
+            transformation.transformer = transformer;
+            transformation.node = node;
+            transformation.tt = tt;
+
+            _transformationQueue.push_back(transformation);
+            //_transformationQueue.push_back(Transformation{transformer, node, tt});
          }
 
       /**
