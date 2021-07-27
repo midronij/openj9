@@ -27,6 +27,8 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 
+import org.testng.Assert;
+
 public class JavaFileLock extends GenericFileLock {
 
 	FileChannel javaLockChannel = null;
@@ -40,6 +42,7 @@ public class JavaFileLock extends GenericFileLock {
 
 	@Override
 	public boolean lockFile(boolean blocking) throws Exception {
+		Assert.fail("JACKIE: JavaFileLock");
 		if (blocking) {
 			myLock = javaLockChannel.lock();
 		} else {

@@ -126,6 +126,7 @@ public class TestFileLocking {
 		/* the lock is uncontended. Should not block or fail */
 		boolean locked = false;
 		try {
+			System.out.println("JACKIE: myFileLock type is " + myFileLock.getClass().getName());
 			locked = myFileLock.lockFile(mainProcessNonblocking);
 		} catch (Exception e) {
 			e.printStackTrace();

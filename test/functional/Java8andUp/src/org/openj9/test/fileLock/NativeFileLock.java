@@ -25,6 +25,8 @@ import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 
+import org.testng.Assert;
+
 @SuppressWarnings("nls")
 public class NativeFileLock extends GenericFileLock {
 	private Method unlockFileMethod;
@@ -51,6 +53,7 @@ public class NativeFileLock extends GenericFileLock {
 
 	@Override
 	public boolean lockFile(boolean blocking) throws Exception {
+		Assert.fail("JACKIE: NativeFileLock");
 		Boolean result = Boolean.valueOf(true);
 		TestFileLocking.logger.debug("lockfile blocking =" + blocking);
 		result = (Boolean) lockFileMethod.invoke(fileLockObject, Boolean.valueOf(blocking), "NativeFileLock.lockFile()");
