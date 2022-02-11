@@ -12161,6 +12161,56 @@ TR::Register *J9::Power::TreeEvaluator::directCallEvaluator(TR::Node *node, TR::
       TR::Node::recreate(node, TR::vadd);
       return vaddEvaluator(node, cg);
       }
+   else if (callee->getRecognizedMethod() == TR::jdk_internal_vm_vector_VectorSupport_ternaryOp &&
+       node->getOpCodeValue() == TR::vcall) // was vectorized
+      {
+      // The following code is temporary and can only be enabled for specific opcodes in VectorAPIExpansion.
+      // It's an example of how development of vector evaluators can proceed until vector IL opcodes
+      // are implemented. Eventually, all recognition of Vector API methods will be removed from this
+      // evaluator
+      //
+      int firstOperandIndex = 5;
+      int secondOperandIndex = 6;
+      int thirdOperandIndex = 7;
+      TR::Node *opcodeNode = node->getChild(0);
+      TR::Node *dataTypeNode = node->getChild(3);
+      TR::Node *numLanesNode = node->getChild(4);
+      TR::Node *firstOperandNode = node->getChild(firstOperandIndex);
+      TR::Node *secondOperandNode = node->getChild(secondOperandIndex);
+      TR::Node *thirdOperandNode = node->getChild(thirdOperandIndex);
+
+      TR::DataType dataType = TR_VectorAPIExpansion::getDataTypeFromClassNode(cg->comp(), dataTypeNode);
+      bool supported = true;
+      if (dataType != TR::Float && dataType != TR::Double)
+         supported = false;
+      if (!opcodeNode->getOpCode().isLoadConst() ||
+          opcodeNode->getInt() != TR_VectorAPIExpansion::VECTOR_OP_FMA)
+         supported = false;
+      if (!numLanesNode->getOpCode().isLoadConst() ||
+          (dataType == TR::Float && numLanesNode->getInt() != 4) ||
+          (dataType == TR::Double && numLanesNode->getInt() != 2))
+         supported = false;
+
+      TR_ASSERT_FATAL_WITH_NODE(node, supported, "Vector API opcode, type, and number of lanes should be supported\n");
+
+      // evaluate unused children
+      for (int i = 0; i < node->getNumChildren(); i++)
+         {
+         TR::Node *child = node->getChild(i);
+         if (i != firstOperandIndex && i != secondOperandIndex && i != thirdOperandIndex)
+            {
+            cg->evaluate(child);
+            cg->recursivelyDecReferenceCount(child);
+            }
+         }
+
+      node->setChild(0, firstOperandNode);
+      node->setChild(1, secondOperandNode);
+      node->setChild(2, thirdOperandNode);
+      node->setNumChildren(3);
+      TR::Node::recreate(node, TR::vadd);
+      return vfmaEvaluator(node, cg);
+      }
    else if (callee->getRecognizedMethod() >= TR::FirstVectorMethod &&
             callee->getRecognizedMethod() <= TR::LastVectorMethod &&
             node->getOpCodeValue() == TR::vcall) // was vectorized

@@ -1306,12 +1306,12 @@ bool TR_VectorAPIExpansion::useVcallForVectorAPIOpcode(TR::Compilation *comp, in
    // Check for opcodes that will use vcall temporarily.
    // Add other specific opcodes here that you would like to prototype using vcall
    // This is meant for prototyping only. Please do not enable when merging.
-#if 0
+//#if 0
    if ((vectorAPIOpcode == VECTOR_OP_FMA
         || vectorAPIOpcode == VECTOR_OP_ADD) &&
         comp->target().cpu.isPower() && vectorLength == 128)
         return true;
-#endif
+//#endif
 
    return false;
    }
