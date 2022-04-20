@@ -1571,7 +1571,7 @@ TR::ILOpCodes TR_VectorAPIExpansion::ILOpcodeFromVectorAPIOpcode(int32_t vectorA
       case VECTOR_OP_MUL: return scalar ? TR::ILOpCode::multiplyOpCode(elementType) : TR::vmul;
       case VECTOR_OP_DIV: return scalar ? TR::ILOpCode::divideOpCode(elementType) : TR::vdiv;
       case VECTOR_OP_MIN: return scalar ? TR::BadILOp : TR::ILOpCode::createVectorOpCode(OMR::vmin, TR::DataType::createVectorType(elementType.getDataType(), vectorLength)).getOpCodeValue();
-      case VECTOR_OP_MAX: return TR::BadILOp;
+      case VECTOR_OP_MAX: return scalar ? TR::BadILOp : TR::ILOpCode::createVectorOpCode(OMR::vmax, TR::DataType::createVectorType(elementType.getDataType(), vectorLength)).getOpCodeValue();
       case VECTOR_OP_AND: return scalar ? TR::ILOpCode::andOpCode(elementType) : TR::vand;
       case VECTOR_OP_OR:  return scalar ? TR::ILOpCode::orOpCode(elementType)  : TR::vor;
       case VECTOR_OP_XOR: return scalar ? TR::ILOpCode::xorOpCode(elementType) : TR::vxor;
