@@ -198,6 +198,7 @@ TR::Node *
 J9::TransformUtil::findArrayIndexNode(TR::Compilation *comp, TR::Node *loadNode)
    {
    TR_ASSERT_FATAL_WITH_NODE(loadNode, loadNode->getOpCode().isLoadIndirect(), "Node must be an indirect load.");
+   traceMsg(comp, "Entering J9::TransformUtil::findArrayIndexNode with %p\n", loadNode);
    /* Expected tree structure for contiguous arrays
       indirect_load
          aladd
@@ -212,13 +213,16 @@ J9::TransformUtil::findArrayIndexNode(TR::Compilation *comp, TR::Node *loadNode)
 
    TR::Node *alddNode = loadNode->getFirstChild();
    TR::Node *indexNode = NULL;
+   traceMsg(comp, "About to check isDataAddrPointer.\n");
    if (alddNode->getFirstChild()->isDataAddrPointer()
       || alddNode->getSecondChild()->getNumChildren() == 0)
       {
+      traceMsg(comp, "in If block.\n");
       indexNode = alddNode->getSecondChild();
       }
    else
       {
+      traceMsg(comp, "in else block.\n");
       indexNode = alddNode->getSecondChild()->getFirstChild();
       }
 
@@ -234,6 +238,7 @@ J9::TransformUtil::findArrayIndexNode(TR::Compilation *comp, TR::Node *loadNode)
    //       indexNode = shiftNode->getFirstChild();
    //    }
 
+   traceMsg(comp, "Exiting J9::TransformUtil::findArrayIndexNode with %p\n", indexNode);
    return indexNode;
    }
 
