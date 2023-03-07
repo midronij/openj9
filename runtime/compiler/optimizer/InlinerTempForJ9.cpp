@@ -4838,9 +4838,10 @@ TR_J9InlinerPolicy::supressInliningRecognizedInitialCallee(TR_CallSite* callsite
 
    // Disabling the inlining of VectorIntrinsic methods so that
    // VectorAPIExpansion can vectorize the intrinsics
-   if (rm >= TR::FirstVectorMethod &&
+   /*if (rm >= TR::FirstVectorMethod &&
        rm <= TR::LastVectorIntrinsicMethod)
       return true;
+   */
    // Methods we must not inline for correctness
    //
    switch (initialCalleeMethod->convertToMethod()->getMandatoryRecognizedMethod())
