@@ -364,7 +364,10 @@ TR_J9ByteCodeIlGenerator::genILFromByteCodes()
    TR::Block * lastBlock = walker(0);
 
    if (hasExceptionHandlers())
+      {
+      _methodSymbol->setHasExceptionHandlers();
       lastBlock = genExceptionHandlers(lastBlock);
+      }
 
    _bcIndex = 0;
 
