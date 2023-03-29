@@ -841,6 +841,7 @@ public:
 	MMINLINE void **
 	dataAddrSlotForContiguous(J9IndexableObject *arrayPtr)
 	{
+		//AssertContiguousArrayletLayout(arrayPtr);
 		bool const compressed = compressObjectReferences();
 		void **dataAddrPtr = NULL;
 		if (compressed) {
@@ -977,6 +978,7 @@ public:
 			/* If double mapping is enabled only, arraylet will have a discontiguous layout.
 			 * If sparse-heap is enabled, arraylet will have a contiguous layout. For now we
 			 * Assert only the discontiguous case until sparse-heap is introduced. */
+			AssertDiscontiguousArrayletLayout(arrayPtr);
 			dataAddr = *dataAddrSlotForDiscontiguous(arrayPtr);
 		}
 
@@ -1045,7 +1047,7 @@ public:
 #if defined(J9VM_GC_ENABLE_DOUBLE_MAP)
 			 || isDoubleMappingEnabled()
 #endif /* defined(J9VM_GC_ENABLE_DOUBLE_MAP) */
-			 ) {
+			 ) { 
 				isValidDataAddress = isValidDataAddrForDoubleMappedObject;
 			}
 			else {
@@ -1227,13 +1229,20 @@ public:
 
 	/**
 	 * Returns the address of first data slot in the array.
-	 *
+	 * 
 	 * @param arrayPtr Pointer to the contigous indexable object whose dataPointer we are trying to access
 	 * @return Address of first data slot in the array
 	 */
 	MMINLINE void *
 	getDataPointerForContiguous(J9IndexableObject *arrayPtr)
 	{
+#if defined(J9VM_ENV_DATA64)
+		if (_isIndexableDataAddrPresent) {
+			return compressObjectReferences()
+					? ((J9IndexableObjectWithDataAddressContiguousCompressed *)arrayPtr)->dataAddr
+					: ((J9IndexableObjectWithDataAddressContiguousFull *)arrayPtr)->dataAddr;
+		}
+#endif /* defined(J9VM_ENV_DATA64) */
 		return (void *)((uintptr_t)arrayPtr + contiguousIndexableHeaderSize());
 	}
 
@@ -1318,7 +1327,7 @@ public:
 	 * @param dataSizeInBytes the size of data in an indexable object, in bytes, including leaves and alignment padding
 	 * @return true if based on the value of dataSizeInBytes, the arraylet data is adjacent to the header, false otherwise
 	 */
-	bool isArrayletDataAdjacentToHeader(uintptr_t dataSizeInBytes);
+	bool isArrayletDataAdjacentToHeader(UDATA dataSizeInBytes);
 
 	/**
 	 * Check if the arraylet data is within the heap.
@@ -1338,15 +1347,14 @@ public:
 	 */
 	bool isIndexableObjectDoubleMapped(MM_GCExtensionsBase *extensions, J9IndexableObject *arrayPtr);
 
-
 	/**
-	 * Check if the data address for the contiguous indexable object should be fixed up.
+	 * Check if the data address for the indexable object should be fixed up.
 	 *
 	 * @param extensions pointer to MM_GCExtensionsBase
-	 * @param forwardedHeader pointer to the MM_ForwardedHeader instance encapsulating the object
+	 * @param arrayPtr  pointer to indexable object we are checking the data address
 	 * @return true if we should fixup the data address of the indexable object
 	 */
-	bool shouldFixupDataAddrForContiguous(J9IndexableObject *arrayPtr);
+	bool shouldFixupDataAddr(MM_GCExtensionsBase *extensions, J9IndexableObject *arrayPtr);
 
 	/**
 	 * Initialize the receiver, a new instance of GC_ObjectModel

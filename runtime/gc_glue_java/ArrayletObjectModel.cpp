@@ -59,10 +59,10 @@ GC_ArrayletObjectModel::AssertArrayletIsDiscontiguous(J9IndexableObject *objPtr)
 #endif /* defined(J9VM_GC_ENABLE_DOUBLE_MAP) */
 	{
 		if (!isVirtualLargeObjectHeapEnabled()) {
-			uintptr_t arrayletLeafSize = _omrVM->_arrayletLeafSize;
-			uintptr_t remainderBytes = getDataSizeInBytes(objPtr) % arrayletLeafSize;
+			UDATA arrayletLeafSize = _omrVM->_arrayletLeafSize;
+			UDATA remainderBytes = getDataSizeInBytes(objPtr) % arrayletLeafSize;
 			if (0 != remainderBytes) {
-				MM_GCExtensionsBase *extensions = MM_GCExtensionsBase::getExtensions(_omrVM);
+				MM_GCExtensionsBase* extensions = MM_GCExtensionsBase::getExtensions(_omrVM);
 				Assert_MM_true((getSpineSize(objPtr) + remainderBytes + extensions->getObjectAlignmentInBytes()) > arrayletLeafSize);
 			}
 		}
@@ -165,26 +165,25 @@ GC_ArrayletObjectModel::fixupInternalLeafPointersAfterCopy(J9IndexableObject *de
 bool
 GC_ArrayletObjectModel::isArrayletDataAdjacentToHeader(J9IndexableObject *arrayPtr)
 {
-	uintptr_t dataSizeInBytes = getDataSizeInBytes(arrayPtr);
+	UDATA dataSizeInBytes = getDataSizeInBytes(arrayPtr);
 	return isArrayletDataAdjacentToHeader(dataSizeInBytes);
 }
 
 bool
-GC_ArrayletObjectModel::isArrayletDataAdjacentToHeader(uintptr_t dataSizeInBytes)
+GC_ArrayletObjectModel::isArrayletDataAdjacentToHeader(UDATA dataSizeInBytes)
 {
-	MM_GCExtensionsBase *extensions = MM_GCExtensionsBase::getExtensions(_omrVM);
-	uintptr_t minimumSpineSizeAfterGrowing = extensions->getObjectAlignmentInBytes();
+	MM_GCExtensionsBase* extensions = MM_GCExtensionsBase::getExtensions(_omrVM);
+	UDATA minimumSpineSizeAfterGrowing = extensions->getObjectAlignmentInBytes();
 	return ((UDATA_MAX == _largestDesirableArraySpineSize) || (dataSizeInBytes <= (_largestDesirableArraySpineSize - minimumSpineSizeAfterGrowing - contiguousIndexableHeaderSize())));
 }
 
 bool
 GC_ArrayletObjectModel::isAddressWithinHeap(MM_GCExtensionsBase *extensions, void *address)
 {
-	uintptr_t heapBase = (uintptr_t)extensions->heap->getHeapBase();
-	uintptr_t heapTop = (uintptr_t)extensions->heap->getHeapTop();
-	return ((uintptr_t)address >= heapBase) && ((uintptr_t)address < heapTop);
+	UDATA heapBase = (UDATA)extensions->heap->getHeapBase();
+	UDATA heapTop = (UDATA)extensions->heap->getHeapTop();
+	return ((UDATA)address >= heapBase) && ((UDATA)address < heapTop);
 }
-
 bool
 GC_ArrayletObjectModel::isIndexableObjectDoubleMapped(MM_GCExtensionsBase *extensions, J9IndexableObject *arrayPtr)
 {
@@ -199,10 +198,12 @@ GC_ArrayletObjectModel::isIndexableObjectDoubleMapped(MM_GCExtensionsBase *exten
 }
 
 bool
-GC_ArrayletObjectModel::shouldFixupDataAddrForContiguous(J9IndexableObject *arrayPtr)
+GC_ArrayletObjectModel::shouldFixupDataAddr(MM_GCExtensionsBase *extensions, J9IndexableObject *arrayPtr)
 {
 #if defined(J9VM_ENV_DATA64)
-	return ((void *)((uintptr_t)arrayPtr + contiguousIndexableHeaderSize()) == getDataAddrForContiguous(arrayPtr));
+	void *dataAddr = getDataAddrForIndexableObject(arrayPtr);
+	return isAddressWithinHeap(extensions, dataAddr);
+
 #else /* defined(J9VM_ENV_DATA64) */
 	return false;
 #endif /* defined(J9VM_ENV_DATA64) */
