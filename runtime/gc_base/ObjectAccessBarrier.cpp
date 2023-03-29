@@ -114,8 +114,8 @@ MM_ObjectAccessBarrier::copyArrayCritical(J9VMThread *vmThread, GC_ArrayObjectMo
 	J9InternalVMFunctions *functions, void **data,
 	J9IndexableObject *arrayObject, jboolean *isCopy)
 {
-	int32_t sizeInElements = (int32_t)indexableObjectModel->getSizeInElements(arrayObject);
-	uintptr_t sizeInBytes = indexableObjectModel->getDataSizeInBytes(arrayObject);
+	I_32 sizeInElements = (I_32)indexableObjectModel->getSizeInElements(arrayObject);
+	UDATA sizeInBytes = indexableObjectModel->getDataSizeInBytes(arrayObject);
 	*data = functions->jniArrayAllocateMemoryFromThread(vmThread, sizeInBytes);
 	if (NULL == *data) {
 		/* better error message here? */
@@ -160,20 +160,20 @@ MM_ObjectAccessBarrier::copyStringCritical(J9VMThread *vmThread, GC_ArrayObjectM
 	J9IndexableObject *valueObject, J9Object *stringObject, jboolean *isCopy, bool isCompressed)
 {
 	jint length = J9VMJAVALANGSTRING_LENGTH(vmThread, stringObject);
-	uintptr_t sizeInBytes = length * sizeof(jchar);
-	jchar *copyArr = (jchar *)functions->jniArrayAllocateMemoryFromThread(vmThread, sizeInBytes);
+	UDATA sizeInBytes = length * sizeof(jchar);
+	jchar *copyArr = (jchar*)functions->jniArrayAllocateMemoryFromThread(vmThread, sizeInBytes);
 	if (NULL == copyArr) {
 		/* better error message here? */
 		functions->setNativeOutOfMemoryError(vmThread, 0, 0);
 	} else {
 		if (isCompressed) {
 			for (jint i = 0; i < length; i++) {
-				copyArr[i] = (jchar)(uint8_t)J9JAVAARRAYOFBYTE_LOAD(vmThread, (j9object_t)valueObject, i);
+				copyArr[i] = (jchar)(U_8)J9JAVAARRAYOFBYTE_LOAD(vmThread, (j9object_t)valueObject, i);
 			}
 		} else {
 			if (J9_ARE_ANY_BITS_SET(javaVM->runtimeFlags, J9_RUNTIME_STRING_BYTE_ARRAY)) {
 				/* This API determines the stride based on the type of valueObject so in the [B case we must passin the length in bytes */
-				indexableObjectModel->memcpyFromArray(copyArr, valueObject, 0, (int32_t)sizeInBytes);
+				indexableObjectModel->memcpyFromArray(copyArr, valueObject, 0, (I_32)sizeInBytes);
 			} else {
 				indexableObjectModel->memcpyFromArray(copyArr, valueObject, 0, length);
 			}
@@ -188,12 +188,12 @@ MM_ObjectAccessBarrier::copyStringCritical(J9VMThread *vmThread, GC_ArrayObjectM
 
 void
 MM_ObjectAccessBarrier::freeStringCritical(J9VMThread *vmThread,
-	J9InternalVMFunctions *functions, const jchar *elems)
+	J9InternalVMFunctions *functions, const jchar* elems)
 {
 	/* String data is not copied back */
-	functions->jniArrayFreeMemoryFromThread(vmThread, (void *)elems);
+	functions->jniArrayFreeMemoryFromThread(vmThread, (void*)elems);
 
-	if (vmThread->jniCriticalCopyCount > 0) {
+	if(vmThread->jniCriticalCopyCount > 0) {
 		vmThread->jniCriticalCopyCount -= 1;
 	} else {
 		Assert_MM_invalidJNICall();

@@ -90,7 +90,7 @@ private:
 	 * @param env thread GC Environment
 	 * @param spine indexable object spine
 	 *
-	 * @return initialized arraylet spine with its arraylet pointers initialized
+	 * @return initialized arraylet spine with its arraylet pointers initialized.
 	 */
 	MMINLINE J9IndexableObject *reserveLeavesForContiguousArraylet(MM_EnvironmentBase *env, J9IndexableObject *spine);
 #endif /* defined(J9VM_GC_ENABLE_DOUBLE_MAP) */
@@ -104,7 +104,7 @@ private:
 	 * @param env thread GC Environment
 	 * @param spine indexable object spine
 	 *
-	 * @return initialized arraylet spine with its arraylet pointers initialized
+	 * @return initialized arraylet spine with its arraylet pointers initialized.
 	 */
 	MMINLINE J9IndexableObject *getSparseAddressAndDecommitLeaves(MM_EnvironmentBase *env, J9IndexableObject *spine);
 #endif /* defined(J9VM_ENV_DATA64) */

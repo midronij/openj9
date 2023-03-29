@@ -105,7 +105,7 @@ GC_ArrayletObjectModelBase::getSpineSizeWithoutHeader(ArrayLayout layout, uintpt
 	isAllIndexableDataContiguousEnabled = (isAllIndexableDataContiguousEnabled || extensions->indexableObjectModel.isDoubleMappingEnabled());
 #endif /* J9VM_GC_ENABLE_DOUBLE_MAP */
 
-	uintptr_t spineDataSize = 0;
+	UDATA spineDataSize = 0;
 	if (InlineContiguous == layout) {
 		spineDataSize = dataSize; // All data in spine
 		if (isAllIndexableDataContiguousEnabled && (!extensions->indexableObjectModel.isArrayletDataAdjacentToHeader(dataSize))) {

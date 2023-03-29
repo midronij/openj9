@@ -75,11 +75,14 @@ MM_IndexableObjectAllocationModel::initializeAllocateDescription(MM_EnvironmentB
 		break;
 
 	case GC_ArrayletObjectModel::InlineContiguous:
-		/* all good */
-		setAllocatable(true);
-		/* If we're dealing with camuflaged discontiguous we must call */
+		/* Check if we're dealing with a camouflaged discontiguous array - these arrays will require slow-path allocate */
 		if (isAllIndexableDataContiguousEnabled && (!extensions->indexableObjectModel.isArrayletDataAdjacentToHeader(_dataSize))) {
-			layoutSizeInBytes = _dataSize;
+			if (isGCAllowed()) {
+				layoutSizeInBytes = _dataSize;
+				setAllocatable(true);
+			}
+		} else {
+			setAllocatable(true);
 		}
 		break;
 
@@ -162,9 +165,9 @@ MM_IndexableObjectAllocationModel::initializeIndexableObject(MM_EnvironmentBase 
 			if (isArrayletDataAdjacentToHeader) {
 				getAllocateDescription()->setDataAdjacentToHeader(true);
 #if defined(J9VM_ENV_DATA64)
-			if (((J9JavaVM *)env->getLanguageVM())->isIndexableDataAddrPresent) {
-				indexableObjectModel->setDataAddrForContiguous(spine);
-			}
+				if (((J9JavaVM *)env->getLanguageVM())->isIndexableDataAddrPresent) {
+					indexableObjectModel->setDataAddrForContiguous(spine);
+				}
 #endif /* defined(J9VM_ENV_DATA64) */
 			} else if (isAllIndexableDataContiguousEnabled) {
 #if defined(J9VM_ENV_DATA64)
@@ -373,8 +376,8 @@ MM_IndexableObjectAllocationModel::reserveLeavesForContiguousArraylet(MM_Environ
 
 	MM_GCExtensions *extensions = MM_GCExtensions::getExtensions(env);
 	GC_ArrayObjectModel *indexableObjectModel = &extensions->indexableObjectModel;
-	const uintptr_t arrayletLeafSize = env->getOmrVM()->_arrayletLeafSize;
-	uintptr_t arrayletLeafCount = MM_Math::roundToCeiling(arrayletLeafSize, _dataSize) / arrayletLeafSize;
+	const UDATA arrayletLeafSize = env->getOmrVM()->_arrayletLeafSize;
+	UDATA arrayletLeafCount = MM_Math::roundToCeiling(arrayletLeafSize, _dataSize) / arrayletLeafSize;
 	MM_HeapRegionDescriptorVLHGC *firstLeafRegionDescriptor = NULL;
 #define ARRAYLET_ALLOC_THRESHOLD 64
 	void *leaves[ARRAYLET_ALLOC_THRESHOLD];
@@ -488,7 +491,7 @@ MM_IndexableObjectAllocationModel::getSparseAddressAndDecommitLeaves(MM_Environm
 
 #if !defined(J9VM_GC_DOUBLE_MAPPING_FOR_SPARSE_HEAP_ALLOCATION)
 		/* Disable region for reads and writes, since that'll be done through the contiguous double mapped region */
-		void *highAddress = (void *)((uintptr_t)leaf + arrayletLeafSize);
+		void *highAddress = (void*)((uintptr_t)leaf + arrayletLeafSize);
 		bool ret = extensions->heap->decommitMemory(leaf, arrayletLeafSize, leaf, highAddress);
 		if (!ret) {
 			Trc_MM_VirtualMemory_decommitMemory_failure(leaf, arrayletLeafSize);
@@ -566,7 +569,7 @@ MM_IndexableObjectAllocationModel::doubleMapArraylets(MM_EnvironmentBase *env, J
 	/* For now we double map the entire region of all arraylet leaves. This might change in the future if hybrid regions are introduced. */
 	uintptr_t byteAmount = arrayletLeafSize * arrayletLeafCount;
 
-	Trc_MM_double_map_Entry(env->getLanguageVMThread(), (void *)_dataSize, (void *)byteAmount, (void *)objectPtr, (void *)arrayletLeafSize, arrayletLeafCount);
+	Trc_MM_double_map_Entry(env->getLanguageVMThread(), (void*)_dataSize, (void*)byteAmount, (void *)objectPtr, (void *)arrayletLeafSize, arrayletLeafCount);
 
 	void *result = NULL;
 	if (NULL == arrayletLeaveAddrs) {

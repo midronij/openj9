@@ -2420,8 +2420,7 @@ TR_J9VMBase::isIndexableDataAddrPresent()
 
 /**
  * Query if off-heap large array allocation is enabled
- *
- * @return true if off-heap large array allocation is enabled, false otherwise
+ *  @return true if off-heap large array allocation is enabled, false otherwise
  */
 bool
 TR_J9VMBase::isOffHeapAllocationEnabled()
