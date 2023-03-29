@@ -2023,13 +2023,22 @@ MM_CopyForwardScheme::copy(MM_EnvironmentVLHGC *env, MM_AllocationContextTarok *
 
 				if (objectModel->isIndexable(destinationObjectPtr)) {
 					indexableObjectModel->fixupInternalLeafPointersAfterCopy((J9IndexableObject *)destinationObjectPtr, (J9IndexableObject *)forwardedHeader->getObject());
+
 #if defined(J9VM_ENV_DATA64)
-					/**
-					 * Update the dataAddr internal field of the indexable object. The field being updated
-					 * points to the array data. In the case of contiguous data, it will point to the data
-					 * itself, and in case of discontiguous data, it will be NULL.
-					 */
-					indexableObjectModel->fixupDataAddr(forwardedHeader, destinationObjectPtr);
+					/* If double mapping is enabled and the indexable object has been double mapped, there's no need to update the data pointer.
+					 * However, if either one of these statements is false than we must update it, because data pointer points to data within heap. */
+					bool shouldFixupDataAddr = !indexableObjectModel->isVirtualLargeObjectHeapEnabled();
+#if defined(J9VM_GC_ENABLE_DOUBLE_MAP)
+					shouldFixupDataAddr = shouldFixupDataAddr && !indexableObjectModel->isDoubleMappingEnabled();
+#endif /* defined(J9VM_GC_ENABLE_DOUBLE_MAP) */
+					if (shouldFixupDataAddr ||  indexableObjectModel->shouldFixupDataAddr(_extensions, (J9IndexableObject *)destinationObjectPtr)) {
+						/* Updates internal data address of indexable objects. Every indexable object have a void *dataAddr
+						 * that always points to the array data. It will always point to the address right after the header,
+						 * in case of contiguous data it will point to the data itself, and in case of discontiguous
+						 * arraylet it will point to the first arrayiod. dataAddr is only updated if dataAddr points to data
+						 * within heap. */
+						indexableObjectModel->fixupDataAddr(destinationObjectPtr);
+					}
 #endif /* defined(J9VM_ENV_DATA64) */
 				}
 
@@ -4072,7 +4081,6 @@ private:
 			Assert_MM_true(_copyForwardScheme->isObjectInEvacuateMemory(objectPtr));
 			void *dataAddr = _extensions->indexableObjectModel.getDataAddrForContiguous((J9IndexableObject *)objectPtr);
 			MM_ForwardedHeader forwardedHeader(objectPtr, _extensions->compressObjectReferences());
-			objectPtr = forwardedHeader.getForwardedObject();
 			void *forwardedObject = forwardedHeader.getForwardedObject();
 			bool virtualLargeObjectHeapEnabled = _extensions->indexableObjectModel.isVirtualLargeObjectHeapEnabled();
 			/* If forwardedObject is NULL, free the double mapped region occupied by the data of the indexable object */
@@ -4090,10 +4098,9 @@ private:
 			} else if (virtualLargeObjectHeapEnabled && NULL != dataAddr) {
 				/* There might be the case that GC finds a floating arraylet, which was a result of an allocation
 				 * failure (reason why this GC cycle is happening). */
-				if (!_extensions->indexableObjectModel.isAddressWithinHeap(_extensions, dataAddr)) {
-					_extensions->largeObjectVirtualMemory->updateSparseDataEntryAfterObjectHasMoved(dataAddr, forwardedObject);
-				}
+				_extensions->largeObjectVirtualMemory->updateSparseDataEntryAfterObjectHasMoved(dataAddr, forwardedObject);
 			}
+			objectPtr = forwardedHeader.getForwardedObject();
 		}
 	}
 #endif /* J9VM_GC_ENABLE_DOUBLE_MAP */
@@ -4107,7 +4114,6 @@ private:
 			Assert_MM_true(_copyForwardScheme->isObjectInEvacuateMemory(objectPtr));
 			void *dataAddr = _extensions->indexableObjectModel.getDataAddrForContiguous((J9IndexableObject *)objectPtr);
 			MM_ForwardedHeader forwardedHeader(objectPtr, _extensions->compressObjectReferences());
-			objectPtr = forwardedHeader.getForwardedObject();
 			void *forwardedObject = forwardedHeader.getForwardedObject();
 			/* If forwardedObject is NULL, free the sparse region occupied by the data of the indexable object */
 			if (NULL == forwardedObject) {
@@ -4118,10 +4124,9 @@ private:
 			} else if (NULL != dataAddr) {
 				/* There might be the case that GC finds a floating arraylet, which was a result of an allocation
 				 * failure (reason why this GC cycle is happening) */
-				if (!_extensions->indexableObjectModel.isAddressWithinHeap(_extensions, dataAddr)) {
-					_extensions->largeObjectVirtualMemory->updateSparseDataEntryAfterObjectHasMoved(dataAddr, forwardedObject);
-				}
+				_extensions->largeObjectVirtualMemory->updateSparseDataEntryAfterObjectHasMoved(dataAddr, forwardedObject);
 			}
+			objectPtr = forwardedHeader.getForwardedObject();
 		}
 	}
 #endif /* J9VM_ENV_DATA64 */
