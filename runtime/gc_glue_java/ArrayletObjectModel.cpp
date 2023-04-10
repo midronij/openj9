@@ -184,6 +184,7 @@ GC_ArrayletObjectModel::isAddressWithinHeap(MM_GCExtensionsBase *extensions, voi
 	UDATA heapTop = (UDATA)extensions->heap->getHeapTop();
 	return ((UDATA)address >= heapBase) && ((UDATA)address < heapTop);
 }
+
 bool
 GC_ArrayletObjectModel::isIndexableObjectDoubleMapped(MM_GCExtensionsBase *extensions, J9IndexableObject *arrayPtr)
 {
