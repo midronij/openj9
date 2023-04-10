@@ -165,9 +165,9 @@ MM_IndexableObjectAllocationModel::initializeIndexableObject(MM_EnvironmentBase 
 			if (isArrayletDataAdjacentToHeader) {
 				getAllocateDescription()->setDataAdjacentToHeader(true);
 #if defined(J9VM_ENV_DATA64)
-				if (((J9JavaVM *)env->getLanguageVM())->isIndexableDataAddrPresent) {
-					indexableObjectModel->setDataAddrForContiguous(spine);
-				}
+			if (((J9JavaVM *)env->getLanguageVM())->isIndexableDataAddrPresent) {
+				indexableObjectModel->setDataAddrForContiguous(spine);
+			}
 #endif /* defined(J9VM_ENV_DATA64) */
 			} else if (isAllIndexableDataContiguousEnabled) {
 #if defined(J9VM_ENV_DATA64)
