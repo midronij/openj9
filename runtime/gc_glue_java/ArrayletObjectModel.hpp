@@ -841,7 +841,6 @@ public:
 	MMINLINE void **
 	dataAddrSlotForContiguous(J9IndexableObject *arrayPtr)
 	{
-		//AssertContiguousArrayletLayout(arrayPtr);
 		bool const compressed = compressObjectReferences();
 		void **dataAddrPtr = NULL;
 		if (compressed) {
@@ -978,7 +977,6 @@ public:
 			/* If double mapping is enabled only, arraylet will have a discontiguous layout.
 			 * If sparse-heap is enabled, arraylet will have a contiguous layout. For now we
 			 * Assert only the discontiguous case until sparse-heap is introduced. */
-			AssertDiscontiguousArrayletLayout(arrayPtr);
 			dataAddr = *dataAddrSlotForDiscontiguous(arrayPtr);
 		}
 

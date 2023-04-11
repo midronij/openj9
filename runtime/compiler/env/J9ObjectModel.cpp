@@ -329,7 +329,6 @@ J9::ObjectModel::contiguousArrayHeaderSizeInBytes()
       }
 #endif /* defined(J9VM_OPT_JITSERVER) */
    return TR::Compiler->javaVM->contiguousIndexableHeaderSize;
-   return TR::Compiler->javaVM->contiguousIndexableHeaderSize;
    }
 
 
@@ -343,7 +342,6 @@ J9::ObjectModel::discontiguousArrayHeaderSizeInBytes()
       return vmInfo->_discontiguousIndexableHeaderSize;
       }
 #endif /* defined(J9VM_OPT_JITSERVER) */
-   return TR::Compiler->javaVM->discontiguousIndexableHeaderSize;
    return TR::Compiler->javaVM->discontiguousIndexableHeaderSize;
    }
 

@@ -100,6 +100,6 @@ class GCArrayletObjectModel_V2 extends GCArrayletObjectModelBase
 			}
 		}
 
-		return hasCorrectDataAddrPointer;
+		return isCorrectDataAddrPointer;
 	}
 }
