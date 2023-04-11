@@ -474,7 +474,7 @@ public:
 	 * of the arraylet associated with this leaf. Only arraylets that have been off-heap
 	 * allocated or double-mapped will contain such a contiguous address, otherwise the
 	 * address will be NULL.
-	 * 
+	 *
 	 * @param env thread GC Environment
 	 */
 	void scanObjectsInVirtualLargeObjectHeap(MM_EnvironmentBase *env);

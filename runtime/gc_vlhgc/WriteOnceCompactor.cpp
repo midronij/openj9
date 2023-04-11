@@ -1384,11 +1384,10 @@ MM_WriteOnceCompactor::fixupPointerArrayObject(MM_EnvironmentVLHGC* env, J9Objec
 	/* arraylet leaves are walked separately in fixupArrayletLeafRegionContentsAndObjectLists(), to increase parallelism. Just walk the spine */
 	GC_ArrayObjectModel* indexableObjectModel = &_extensions->indexableObjectModel;
 	GC_ArrayletObjectModel::ArrayLayout layout = indexableObjectModel->getArrayLayout((J9IndexableObject*)objectPtr);
-	 
-		
+
 	if (GC_ArrayletObjectModel::InlineContiguous == layout) {
 		//Note: For offheap we need a special check for the case of a partially offheap allocated array that caused the current GC (its dataAddr field will still be NULL), with offheap heap we will fixup camouflaged discontiguous arrays) - DM, like default balanced, wants to fixup only truly contiguous arrays
-		if (indexableObjectModel->isArrayletDataAdjacentToHeader((J9IndexableObject*)objectPtr) 
+		if (indexableObjectModel->isArrayletDataAdjacentToHeader((J9IndexableObject*)objectPtr)
 #if defined(J9VM_ENV_DATA64)
 		 || (indexableObjectModel->isVirtualLargeObjectHeapEnabled() && (NULL != indexableObjectModel->getDataAddrForContiguous((J9IndexableObject*)objectPtr)))
 #endif /* defined(J9VM_ENV_DATA64) */

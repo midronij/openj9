@@ -124,7 +124,7 @@ public:
 
 	/**
 	 * Returns if a indexable object is discontiguous or contiguous.
-	 * 
+	 *
 	 * @param arrayPtr Pointer to the indexable object whose size is required
 	 * @return true if arraylet is discontiguous, false otherwise
 	 */
@@ -243,7 +243,7 @@ public:
 
 	/**
 	 * Query if virtual large object heap (off-heap) allocation for large objects is enabled.
-	 * 
+	 *
 	 * @return true if virtual large object heap (off-heap) allocation for large objects is enabled, 0 otherwise
 	 */
 	MMINLINE bool
