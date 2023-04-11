@@ -166,7 +166,7 @@ j9gc_hot_reference_field_required(J9JavaVM *javaVM)
 
 /**
  * Query if off heap allocation for large objects is enabled.
- * 
+ *
  * @param javaVM pointer to J9JavaVM
  * @return true if extensions flag isVirtualLargeObjectHeapEnabled is set, 0 otherwise
  */
