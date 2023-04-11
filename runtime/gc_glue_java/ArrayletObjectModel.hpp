@@ -1047,7 +1047,7 @@ public:
 #if defined(J9VM_GC_ENABLE_DOUBLE_MAP)
 			 || isDoubleMappingEnabled()
 #endif /* defined(J9VM_GC_ENABLE_DOUBLE_MAP) */
-			 ) { 
+			 ) {
 				isValidDataAddress = isValidDataAddrForDoubleMappedObject;
 			}
 			else {
@@ -1250,7 +1250,7 @@ public:
 
 	/**
 	 * Returns the address of first data slot in the array.
-	 * 
+	 *
 	 * @param arrayPtr Pointer to the contigous indexable object whose dataPointer we are trying to access
 	 * @return Address of first data slot in the array
 	 */
