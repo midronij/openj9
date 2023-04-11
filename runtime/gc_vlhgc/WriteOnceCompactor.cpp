@@ -1386,7 +1386,10 @@ MM_WriteOnceCompactor::fixupPointerArrayObject(MM_EnvironmentVLHGC* env, J9Objec
 	GC_ArrayletObjectModel::ArrayLayout layout = indexableObjectModel->getArrayLayout((J9IndexableObject*)objectPtr);
 
 	if (GC_ArrayletObjectModel::InlineContiguous == layout) {
-		//Note: For offheap we need a special check for the case of a partially offheap allocated array that caused the current GC (its dataAddr field will still be NULL), with offheap heap we will fixup camouflaged discontiguous arrays) - DM, like default balanced, wants to fixup only truly contiguous arrays
+		/* For offheap we need a special check for the case of a partially offheap allocated array that caused the current GC
+		 * (its dataAddr field will still be NULL), with offheap heap we will fixup camouflaged discontiguous arrays) - DM, like default
+		 * balanced, wants to fixup only truly contiguous arrays
+		 */
 		if (indexableObjectModel->isArrayletDataAdjacentToHeader((J9IndexableObject*)objectPtr)
 #if defined(J9VM_ENV_DATA64)
 		 || (indexableObjectModel->isVirtualLargeObjectHeapEnabled() && (NULL != indexableObjectModel->getDataAddrForContiguous((J9IndexableObject*)objectPtr)))
@@ -1659,7 +1662,7 @@ public:
 		scanJVMTIObjectTagTables(env);
 #endif /* J9VM_OPT_JVMTI */
 
-//Are below calls to scanDoubleMappedObjects and scanObjectsInVirtualLargeObjectHeap needed?
+/* Are below calls to scanDoubleMappedObjects and scanObjectsInVirtualLargeObjectHeap needed? */
 #if defined(J9VM_GC_ENABLE_DOUBLE_MAP)
 	if (_includeDoubleMap) {
 		scanDoubleMappedObjects(env);

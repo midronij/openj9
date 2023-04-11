@@ -173,7 +173,7 @@ MM_ConfigurationIncrementalGenerational::createHeapWithManager(MM_EnvironmentBas
 	if (extensions->isVirtualLargeObjectHeapRequested) {
 		uintptr_t pagesize = heap->getPageSize();
 		/* Before enabling off-heap allocation for large objects, ensure we are not using large pages or pages larger than arrayletLeafSize  */
-		if ((!extensions->memoryManager->isLargePage(env, pagesize)) || (pagesize <= extensions->getOmrVM()->_arrayletLeafSize)) {
+		if (!extensions->memoryManager->isLargePage(env, pagesize) || (pagesize <= extensions->getOmrVM()->_arrayletLeafSize)) {
 			/* Create off-heap */
 			MM_SparseVirtualMemory *largeObjectVirtualMemory = MM_SparseVirtualMemory::newInstance(env, OMRMEM_CATEGORY_MM_RUNTIME_HEAP, heap);
 			if (NULL != largeObjectVirtualMemory) {
