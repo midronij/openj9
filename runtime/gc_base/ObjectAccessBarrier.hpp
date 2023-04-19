@@ -93,7 +93,7 @@ protected:
 				J9InternalVMFunctions *functions, jchar **data, J9JavaVM *javaVM,
 				J9IndexableObject *valueObject, J9Object *stringObject,
 				jboolean *isCopy, bool isCompressed);
-	void freeStringCritical(J9VMThread *vmThread, J9InternalVMFunctions *functions, const jchar* elems);
+	void freeStringCritical(J9VMThread *vmThread, J9InternalVMFunctions *functions, const jchar *elems);
 
 	/**
 	 * Find the finalize link field in the specified object.
