@@ -106,7 +106,7 @@ MM_ConfigurationRealtime::tearDown(MM_EnvironmentBase* env)
 MM_Heap *
 MM_ConfigurationRealtime::createHeapWithManager(MM_EnvironmentBase *env, uintptr_t heapBytesRequested, MM_HeapRegionManager *regionManager)
 {
-	MM_GCExtensionsBase* extensions = env->getExtensions();
+	MM_GCExtensionsBase *extensions = env->getExtensions();
 
 #if defined(J9VM_ENV_DATA64) || defined(J9VM_GC_ENABLE_DOUBLE_MAP)
 	PORT_ACCESS_FROM_ENVIRONMENT(env);

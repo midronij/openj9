@@ -367,8 +367,8 @@ MM_StandardAccessBarrier::jniGetPrimitiveArrayCritical(J9VMThread* vmThread, jar
 	void *data = NULL;
 	J9JavaVM *javaVM = vmThread->javaVM;
 	J9InternalVMFunctions *functions = javaVM->internalVMFunctions;
-	J9IndexableObject *arrayObject = (J9IndexableObject*)J9_JNI_UNWRAP_REFERENCE(array);
-	GC_ArrayObjectModel* indexableObjectModel = &_extensions->indexableObjectModel;
+	J9IndexableObject *arrayObject = (J9IndexableObject *)J9_JNI_UNWRAP_REFERENCE(array);
+	GC_ArrayObjectModel *indexableObjectModel = &_extensions->indexableObjectModel;
 
 	bool shouldCopy = false;
 	bool alwaysCopyInCritical = (javaVM->runtimeFlags & J9_RUNTIME_ALWAYS_COPY_JNI_CRITICAL) == J9_RUNTIME_ALWAYS_COPY_JNI_CRITICAL;
@@ -396,8 +396,8 @@ MM_StandardAccessBarrier::jniReleasePrimitiveArrayCritical(J9VMThread* vmThread,
 {
 	J9JavaVM *javaVM = vmThread->javaVM;
 	J9InternalVMFunctions *functions = javaVM->internalVMFunctions;
-	GC_ArrayObjectModel* indexableObjectModel = &_extensions->indexableObjectModel;
-	J9IndexableObject *arrayObject = (J9IndexableObject*)J9_JNI_UNWRAP_REFERENCE(array);
+	GC_ArrayObjectModel *indexableObjectModel = &_extensions->indexableObjectModel;
+	J9IndexableObject *arrayObject = (J9IndexableObject *)J9_JNI_UNWRAP_REFERENCE(array);
 
 	bool shouldCopy = false;
 	bool alwaysCopyInCritical = (javaVM->runtimeFlags & J9_RUNTIME_ALWAYS_COPY_JNI_CRITICAL) == J9_RUNTIME_ALWAYS_COPY_JNI_CRITICAL;
