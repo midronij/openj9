@@ -1325,7 +1325,7 @@ public:
 	 * @param dataSizeInBytes the size of data in an indexable object, in bytes, including leaves and alignment padding
 	 * @return true if based on the value of dataSizeInBytes, the arraylet data is adjacent to the header, false otherwise
 	 */
-	bool isArrayletDataAdjacentToHeader(UDATA dataSizeInBytes);
+	bool isArrayletDataAdjacentToHeader(uintptr_t dataSizeInBytes);
 
 	/**
 	 * Check if the arraylet data is within the heap.
