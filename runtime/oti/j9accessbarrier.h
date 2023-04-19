@@ -115,19 +115,23 @@ typedef struct J9IndexableObject* mm_j9array_t;
 
 #if defined(J9VM_ENV_DATA64)
 #define J9JAVAARRAYCONTIGUOUS_EA(vmThread, array, index, elemType) \
-		((vmThread->isIndexableDataAddrPresent) \
-			?	(J9VMTHREAD_COMPRESS_OBJECT_REFERENCES(vmThread) \
+		(((vmThread)->isIndexableDataAddrPresent) \
+			? (J9VMTHREAD_COMPRESS_OBJECT_REFERENCES(vmThread) \
 				? (&((elemType*)((((J9IndexableObjectWithDataAddressContiguousCompressed *)(array))->dataAddr)))[(index)]) \
 				: (&((elemType*)((((J9IndexableObjectWithDataAddressContiguousFull *)(array))->dataAddr)))[(index)])) \
-			: (&((elemType*)((((UDATA)(array)) + (vmThread)->contiguousIndexableHeaderSize)))[(index)]))
+			: (J9VMTHREAD_COMPRESS_OBJECT_REFERENCES(vmThread) \
+				? (&((elemType*)((((J9IndexableObjectContiguousCompressed *)(array)) + 1)))[(index)]) \
+				: (&((elemType*)((((J9IndexableObjectContiguousFull *)(array)) + 1)))[(index)])))
 
 
 #define J9JAVAARRAYCONTIGUOUS_EA_VM(javaVM, array, index, elemType) \
-	((javaVM->isIndexableDataAddrPresent) \
-		?	(J9JAVAVM_COMPRESS_OBJECT_REFERENCES(javaVM) \
+	(((javaVM)->isIndexableDataAddrPresent) \
+		? (J9JAVAVM_COMPRESS_OBJECT_REFERENCES(javaVM) \
 			? (&((elemType*)((((J9IndexableObjectWithDataAddressContiguousCompressed *)(array))->dataAddr)))[(index)]) \
 			: (&((elemType*)((((J9IndexableObjectWithDataAddressContiguousFull *)(array))->dataAddr)))[(index)])) \
-		: (&((elemType*)((((UDATA)(array)) + (javaVM)->contiguousIndexableHeaderSize)))[(index)]))
+		: (J9JAVAVM_COMPRESS_OBJECT_REFERENCES(javaVM) \
+			? (&((elemType*)((((J9IndexableObjectContiguousCompressed *)(array)) + 1)))[(index)]) \
+			: (&((elemType*)((((J9IndexableObjectContiguousFull *)(array)) + 1)))[(index)])))
 
 #else /* defined(J9VM_ENV_DATA64) */
 
