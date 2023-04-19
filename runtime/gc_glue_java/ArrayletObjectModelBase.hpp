@@ -131,7 +131,7 @@ public:
 	MMINLINE bool
 	isArrayletDiscontiguous(J9IndexableObject *arrayPtr)
 	{
-		UDATA size = 0;
+		uintptr_t size = 0;
 		if (compressObjectReferences()) {
 			size = ((J9IndexableObjectContiguousCompressed *)arrayPtr)->size;
 		} else {
