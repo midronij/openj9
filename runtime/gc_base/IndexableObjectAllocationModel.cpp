@@ -376,8 +376,8 @@ MM_IndexableObjectAllocationModel::reserveLeavesForContiguousArraylet(MM_Environ
 
 	MM_GCExtensions *extensions = MM_GCExtensions::getExtensions(env);
 	GC_ArrayObjectModel *indexableObjectModel = &extensions->indexableObjectModel;
-	const UDATA arrayletLeafSize = env->getOmrVM()->_arrayletLeafSize;
-	UDATA arrayletLeafCount = MM_Math::roundToCeiling(arrayletLeafSize, _dataSize) / arrayletLeafSize;
+	const uintptr_t arrayletLeafSize = env->getOmrVM()->_arrayletLeafSize;
+	uintptr_t arrayletLeafCount = MM_Math::roundToCeiling(arrayletLeafSize, _dataSize) / arrayletLeafSize;
 	MM_HeapRegionDescriptorVLHGC *firstLeafRegionDescriptor = NULL;
 #define ARRAYLET_ALLOC_THRESHOLD 64
 	void *leaves[ARRAYLET_ALLOC_THRESHOLD];
