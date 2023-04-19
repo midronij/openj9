@@ -62,7 +62,7 @@ GC_ArrayletObjectModel::AssertArrayletIsDiscontiguous(J9IndexableObject *objPtr)
 			uintptr_t arrayletLeafSize = _omrVM->_arrayletLeafSize;
 			uintptr_t remainderBytes = getDataSizeInBytes(objPtr) % arrayletLeafSize;
 			if (0 != remainderBytes) {
-				MM_GCExtensionsBase* extensions = MM_GCExtensionsBase::getExtensions(_omrVM);
+				MM_GCExtensionsBase *extensions = MM_GCExtensionsBase::getExtensions(_omrVM);
 				Assert_MM_true((getSpineSize(objPtr) + remainderBytes + extensions->getObjectAlignmentInBytes()) > arrayletLeafSize);
 			}
 		}
@@ -172,7 +172,7 @@ GC_ArrayletObjectModel::isArrayletDataAdjacentToHeader(J9IndexableObject *arrayP
 bool
 GC_ArrayletObjectModel::isArrayletDataAdjacentToHeader(uintptr_t dataSizeInBytes)
 {
-	MM_GCExtensionsBase* extensions = MM_GCExtensionsBase::getExtensions(_omrVM);
+	MM_GCExtensionsBase *extensions = MM_GCExtensionsBase::getExtensions(_omrVM);
 	uintptr_t minimumSpineSizeAfterGrowing = extensions->getObjectAlignmentInBytes();
 	return ((UDATA_MAX == _largestDesirableArraySpineSize) || (dataSizeInBytes <= (_largestDesirableArraySpineSize - minimumSpineSizeAfterGrowing - contiguousIndexableHeaderSize())));
 }

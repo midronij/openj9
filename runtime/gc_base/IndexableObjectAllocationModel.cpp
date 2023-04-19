@@ -491,7 +491,7 @@ MM_IndexableObjectAllocationModel::getSparseAddressAndDecommitLeaves(MM_Environm
 
 #if !defined(J9VM_GC_DOUBLE_MAPPING_FOR_SPARSE_HEAP_ALLOCATION)
 		/* Disable region for reads and writes, since that'll be done through the contiguous double mapped region */
-		void *highAddress = (void*)((uintptr_t)leaf + arrayletLeafSize);
+		void *highAddress = (void *)((uintptr_t)leaf + arrayletLeafSize);
 		bool ret = extensions->heap->decommitMemory(leaf, arrayletLeafSize, leaf, highAddress);
 		if (!ret) {
 			Trc_MM_VirtualMemory_decommitMemory_failure(leaf, arrayletLeafSize);
@@ -569,7 +569,7 @@ MM_IndexableObjectAllocationModel::doubleMapArraylets(MM_EnvironmentBase *env, J
 	/* For now we double map the entire region of all arraylet leaves. This might change in the future if hybrid regions are introduced. */
 	uintptr_t byteAmount = arrayletLeafSize * arrayletLeafCount;
 
-	Trc_MM_double_map_Entry(env->getLanguageVMThread(), (void*)_dataSize, (void*)byteAmount, (void *)objectPtr, (void *)arrayletLeafSize, arrayletLeafCount);
+	Trc_MM_double_map_Entry(env->getLanguageVMThread(), (void *)_dataSize, (void *)byteAmount, (void *)objectPtr, (void *)arrayletLeafSize, arrayletLeafCount);
 
 	void *result = NULL;
 	if (NULL == arrayletLeaveAddrs) {

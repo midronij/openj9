@@ -161,7 +161,7 @@ MM_ObjectAccessBarrier::copyStringCritical(J9VMThread *vmThread, GC_ArrayObjectM
 {
 	jint length = J9VMJAVALANGSTRING_LENGTH(vmThread, stringObject);
 	uintptr_t sizeInBytes = length * sizeof(jchar);
-	jchar *copyArr = (jchar*)functions->jniArrayAllocateMemoryFromThread(vmThread, sizeInBytes);
+	jchar *copyArr = (jchar *)functions->jniArrayAllocateMemoryFromThread(vmThread, sizeInBytes);
 	if (NULL == copyArr) {
 		/* better error message here? */
 		functions->setNativeOutOfMemoryError(vmThread, 0, 0);
@@ -188,10 +188,10 @@ MM_ObjectAccessBarrier::copyStringCritical(J9VMThread *vmThread, GC_ArrayObjectM
 
 void
 MM_ObjectAccessBarrier::freeStringCritical(J9VMThread *vmThread,
-	J9InternalVMFunctions *functions, const jchar* elems)
+	J9InternalVMFunctions *functions, const jchar *elems)
 {
 	/* String data is not copied back */
-	functions->jniArrayFreeMemoryFromThread(vmThread, (void*)elems);
+	functions->jniArrayFreeMemoryFromThread(vmThread, (void *)elems);
 
 	if (vmThread->jniCriticalCopyCount > 0) {
 		vmThread->jniCriticalCopyCount -= 1;
