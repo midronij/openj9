@@ -376,7 +376,7 @@ MM_StandardAccessBarrier::jniGetPrimitiveArrayCritical(J9VMThread* vmThread, jar
 		shouldCopy = true;
 	}
 
-	if(shouldCopy) {
+	if (shouldCopy) {
 		VM_VMAccess::inlineEnterVMFromJNI(vmThread);
 		copyArrayCritical(vmThread, indexableObjectModel, functions, &data, arrayObject, isCopy);
 		VM_VMAccess::inlineExitVMToJNI(vmThread);
@@ -384,7 +384,7 @@ MM_StandardAccessBarrier::jniGetPrimitiveArrayCritical(J9VMThread* vmThread, jar
 		// acquire access and return a direct pointer
 		MM_JNICriticalRegion::enterCriticalRegion(vmThread, false);
 		data = (void *)indexableObjectModel->getDataPointerForContiguous(arrayObject);
-		if(NULL != isCopy) {
+		if (NULL != isCopy) {
 			*isCopy = JNI_FALSE;
 		}
 	}
@@ -405,7 +405,7 @@ MM_StandardAccessBarrier::jniReleasePrimitiveArrayCritical(J9VMThread* vmThread,
 		shouldCopy = true;
 	}
 
-	if(shouldCopy) {
+	if (shouldCopy) {
 		VM_VMAccess::inlineEnterVMFromJNI(vmThread);
 		copyBackArrayCritical(vmThread, indexableObjectModel, functions, elems, &arrayObject, mode);
 		VM_VMAccess::inlineExitVMToJNI(vmThread);
@@ -415,7 +415,7 @@ MM_StandardAccessBarrier::jniReleasePrimitiveArrayCritical(J9VMThread* vmThread,
 		 * This trace point will be generated if object has been moved or passed value of elems is corrupted
 		 */
 		void *data = (void *)indexableObjectModel->getDataPointerForContiguous(arrayObject);
-		if(elems != data) {
+		if (elems != data) {
 			Trc_MM_JNIReleasePrimitiveArrayCritical_invalid(vmThread, arrayObject, elems, data);
 		}
 

@@ -59,8 +59,8 @@ GC_ArrayletObjectModel::AssertArrayletIsDiscontiguous(J9IndexableObject *objPtr)
 #endif /* defined(J9VM_GC_ENABLE_DOUBLE_MAP) */
 	{
 		if (!isVirtualLargeObjectHeapEnabled()) {
-			UDATA arrayletLeafSize = _omrVM->_arrayletLeafSize;
-			UDATA remainderBytes = getDataSizeInBytes(objPtr) % arrayletLeafSize;
+			uintptr_t arrayletLeafSize = _omrVM->_arrayletLeafSize;
+			uintptr_t remainderBytes = getDataSizeInBytes(objPtr) % arrayletLeafSize;
 			if (0 != remainderBytes) {
 				MM_GCExtensionsBase* extensions = MM_GCExtensionsBase::getExtensions(_omrVM);
 				Assert_MM_true((getSpineSize(objPtr) + remainderBytes + extensions->getObjectAlignmentInBytes()) > arrayletLeafSize);
@@ -83,15 +83,15 @@ GC_ArrayletObjectModel::AssertDiscontiguousArrayletLayout(J9IndexableObject *obj
 }
 
 GC_ArrayletObjectModel::ArrayLayout
-GC_ArrayletObjectModel::getArrayletLayout(J9Class* clazz, UDATA dataSizeInBytes, UDATA largestDesirableSpine)
+GC_ArrayletObjectModel::getArrayletLayout(J9Class* clazz, uintptr_t dataSizeInBytes, uintptr_t largestDesirableSpine)
 {
 	ArrayLayout layout = Illegal;
 	MM_GCExtensionsBase* extensions = MM_GCExtensionsBase::getExtensions(_omrVM);
-	UDATA objectAlignmentInBytes = extensions->getObjectAlignmentInBytes();
+	uintptr_t objectAlignmentInBytes = extensions->getObjectAlignmentInBytes();
 
 	/* the spine need not contain a pointer to the data */
-	const UDATA minimumSpineSize = 0;
-	UDATA minimumSpineSizeAfterGrowing = minimumSpineSize;
+	const uintptr_t minimumSpineSize = 0;
+	uintptr_t minimumSpineSizeAfterGrowing = minimumSpineSize;
 	if (extensions->isVLHGC()) {
 		/* CMVC 170688:  Ensure that we don't try to allocate an inline contiguous array of a size which will overflow the region if it ever grows
 		 * (easier to handle this case in the allocator than to special-case the collectors to know how to avoid this case)
@@ -108,8 +108,8 @@ GC_ArrayletObjectModel::getArrayletLayout(J9Class* clazz, UDATA dataSizeInBytes,
 			layout = Discontiguous;
 		}
 	} else {
-		UDATA arrayletLeafSize = _omrVM->_arrayletLeafSize;
-		UDATA lastArrayletBytes = dataSizeInBytes & (arrayletLeafSize - 1);
+		uintptr_t arrayletLeafSize = _omrVM->_arrayletLeafSize;
+		uintptr_t lastArrayletBytes = dataSizeInBytes & (arrayletLeafSize - 1);
 
 		bool isAllIndexableDataContiguousEnabled = isVirtualLargeObjectHeapEnabled();
 #if defined(J9VM_GC_ENABLE_DOUBLE_MAP)
@@ -119,11 +119,11 @@ GC_ArrayletObjectModel::getArrayletLayout(J9Class* clazz, UDATA dataSizeInBytes,
 			layout = InlineContiguous;
 		} else if (lastArrayletBytes > 0) {
 			/* determine how large the spine would be if this were a hybrid array */
-			UDATA numberArraylets = numArraylets(dataSizeInBytes);
+			uintptr_t numberArraylets = numArraylets(dataSizeInBytes);
 			bool align = shouldAlignSpineDataSection(clazz);
-			UDATA hybridSpineBytes = getSpineSize(clazz, Hybrid, numberArraylets, dataSizeInBytes, align);
-			UDATA adjustedHybridSpineBytes = extensions->objectModel.adjustSizeInBytes(hybridSpineBytes);
-			UDATA adjustedHybridSpineBytesAfterMove = adjustedHybridSpineBytes;
+			uintptr_t hybridSpineBytes = getSpineSize(clazz, Hybrid, numberArraylets, dataSizeInBytes, align);
+			uintptr_t adjustedHybridSpineBytes = extensions->objectModel.adjustSizeInBytes(hybridSpineBytes);
+			uintptr_t adjustedHybridSpineBytesAfterMove = adjustedHybridSpineBytes;
 			if (extensions->isVLHGC()) {
 				adjustedHybridSpineBytesAfterMove += objectAlignmentInBytes;
 			}
@@ -149,14 +149,14 @@ GC_ArrayletObjectModel::fixupInternalLeafPointersAfterCopy(J9IndexableObject *de
 	if (hasArrayletLeafPointers(destinationPtr)) {
 		GC_ArrayletLeafIterator leafIterator((J9JavaVM*)_omrVM->_language_vm, destinationPtr);
 		GC_SlotObject *leafSlotObject = NULL;
-		UDATA sourceStartAddress = (UDATA) sourcePtr;
-		UDATA sourceEndAddress = sourceStartAddress + getSizeInBytesWithHeader(destinationPtr);
+		uintptr_t sourceStartAddress = (uintptr_t) sourcePtr;
+		uintptr_t sourceEndAddress = sourceStartAddress + getSizeInBytesWithHeader(destinationPtr);
 
 		while (NULL != (leafSlotObject = leafIterator.nextLeafPointer())) {
-			UDATA leafAddress = (UDATA)leafSlotObject->readReferenceFromSlot();
+			uintptr_t leafAddress = (uintptr_t)leafSlotObject->readReferenceFromSlot();
 
 			if ((sourceStartAddress < leafAddress) && (leafAddress < sourceEndAddress)) {
-				leafSlotObject->writeReferenceToSlot((J9Object*)((UDATA)destinationPtr + (leafAddress - sourceStartAddress)));
+				leafSlotObject->writeReferenceToSlot((J9Object*)((uintptr_t)destinationPtr + (leafAddress - sourceStartAddress)));
 			}
 		}
 	}
@@ -165,24 +165,24 @@ GC_ArrayletObjectModel::fixupInternalLeafPointersAfterCopy(J9IndexableObject *de
 bool
 GC_ArrayletObjectModel::isArrayletDataAdjacentToHeader(J9IndexableObject *arrayPtr)
 {
-	UDATA dataSizeInBytes = getDataSizeInBytes(arrayPtr);
+	uintptr_t dataSizeInBytes = getDataSizeInBytes(arrayPtr);
 	return isArrayletDataAdjacentToHeader(dataSizeInBytes);
 }
 
 bool
-GC_ArrayletObjectModel::isArrayletDataAdjacentToHeader(UDATA dataSizeInBytes)
+GC_ArrayletObjectModel::isArrayletDataAdjacentToHeader(uintptr_t dataSizeInBytes)
 {
 	MM_GCExtensionsBase* extensions = MM_GCExtensionsBase::getExtensions(_omrVM);
-	UDATA minimumSpineSizeAfterGrowing = extensions->getObjectAlignmentInBytes();
+	uintptr_t minimumSpineSizeAfterGrowing = extensions->getObjectAlignmentInBytes();
 	return ((UDATA_MAX == _largestDesirableArraySpineSize) || (dataSizeInBytes <= (_largestDesirableArraySpineSize - minimumSpineSizeAfterGrowing - contiguousIndexableHeaderSize())));
 }
 
 bool
 GC_ArrayletObjectModel::isAddressWithinHeap(MM_GCExtensionsBase *extensions, void *address)
 {
-	UDATA heapBase = (UDATA)extensions->heap->getHeapBase();
-	UDATA heapTop = (UDATA)extensions->heap->getHeapTop();
-	return ((UDATA)address >= heapBase) && ((UDATA)address < heapTop);
+	uintptr_t heapBase = (uintptr_t)extensions->heap->getHeapBase();
+	uintptr_t heapTop = (uintptr_t)extensions->heap->getHeapTop();
+	return ((uintptr_t)address >= heapBase) && ((uintptr_t)address < heapTop);
 }
 
 bool
