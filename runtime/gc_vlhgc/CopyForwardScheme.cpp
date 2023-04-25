@@ -2031,7 +2031,7 @@ MM_CopyForwardScheme::copy(MM_EnvironmentVLHGC *env, MM_AllocationContextTarok *
 #if defined(J9VM_GC_ENABLE_DOUBLE_MAP)
 					shouldFixupDataAddr = shouldFixupDataAddr && !indexableObjectModel->isDoubleMappingEnabled();
 #endif /* defined(J9VM_GC_ENABLE_DOUBLE_MAP) */
-					if (shouldFixupDataAddr ||  indexableObjectModel->shouldFixupDataAddr(_extensions, (J9IndexableObject *)destinationObjectPtr)) {
+					if (shouldFixupDataAddr ||  indexableObjectModel->shouldFixupDataAddr(_extensions, forwardedHeader)) {
 						/* Updates internal data address of indexable objects. Every indexable object have a void *dataAddr
 						 * that always points to the array data. It will always point to the address right after the header,
 						 * in case of contiguous data it will point to the data itself, and in case of discontiguous
