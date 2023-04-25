@@ -1073,9 +1073,29 @@ public:
 		J9IndexableObject *j9ArrayPtr = (J9IndexableObject *)arrayPtr;
 
 		if (InlineContiguous == getPreservedArrayLayout(forwardedHeader)) {
-			if (shouldFixupDataAddrForContiguous((J9IndexableObject *)forwardedHeader->getObject())) {
-				setDataAddrForContiguous(j9ArrayPtr);
-			}
+			setDataAddrForContiguous(j9ArrayPtr);
+		} else {
+			setDataAddrForDiscontiguous(j9ArrayPtr, NULL);
+		}
+#endif /* J9VM_ENV_DATA64 */
+	}
+	/**
+	 * External fixup dataAddr API to update pointer of indexable objects.
+	 * Sets the dataAddr of either a contiguous or discomtiguous indexable
+	 * object.
+	 *
+	 * @param arrayPtr      Pointer to the indexable object whose size is required
+	 */
+	MMINLINE void
+	fixupDataAddr(omrobjectptr_t arrayPtr)
+	{
+#if defined(J9VM_ENV_DATA64)
+		J9IndexableObject *j9ArrayPtr = (J9IndexableObject *)arrayPtr;
+
+		if (InlineContiguous == getArrayLayout(j9ArrayPtr)) {
+			setDataAddrForContiguous(j9ArrayPtr);
+		} else {
+			setDataAddrForDiscontiguous(j9ArrayPtr, NULL);
 		}
 #endif /* J9VM_ENV_DATA64 */
 	}
@@ -1344,6 +1364,35 @@ public:
 	 * @return true if the indexable object is double mapped
 	 */
 	bool isIndexableObjectDoubleMapped(MM_GCExtensionsBase *extensions, J9IndexableObject *arrayPtr);
+
+
+	/**
+	 * Check if the data address for the contiguous indexable object should be fixed up.
+	 *
+	 * @param extensions pointer to MM_GCExtensionsBase
+	 * @param forwardedHeader pointer to the MM_ForwardedHeader instance encapsulating the object
+	 * @return true if we should fixup the data address of the indexable object
+	 */
+	bool shouldFixupContiguousDataAddr(MM_GCExtensionsBase *extensions, J9IndexableObject *arrayPtr);
+
+	/**
+	 * Check if the data address for the discontiguous indexable object should be fixed up.
+	 *
+	 * @param extensions pointer to MM_GCExtensionsBase
+	 * @param forwardedHeader pointer to the MM_ForwardedHeader instance encapsulating the object
+	 * @return true if we should fixup the data address of the indexable object
+	 */
+
+	bool shouldFixupDiscontiguousDataAddr(MM_GCExtensionsBase *extensions, J9IndexableObject *arrayPtr);
+
+	/**
+	 * Check if the data address for the indexable object should be fixed up.
+	 *
+	 * @param extensions pointer to MM_GCExtensionsBase
+	 * @param forwardedHeader pointer to the MM_ForwardedHeader instance encapsulating the object
+	 * @return true if we should fixup the data address of the indexable object
+	 */
+	bool shouldFixupDataAddr(MM_GCExtensionsBase *extensions, MM_ForwardedHeader *forwardedHeader);
 
 	/**
 	 * Check if the data address for the indexable object should be fixed up.
