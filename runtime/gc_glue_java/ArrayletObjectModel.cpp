@@ -212,7 +212,7 @@ bool
 GC_ArrayletObjectModel::shouldFixupDiscontiguousDataAddr(MM_GCExtensionsBase *extensions, J9IndexableObject *arrayPtr)
 {
 #if defined(J9VM_ENV_DATA64)
-return (NULL == getDataAddrForDiscontiguous(arrayPtr));
+	return (NULL == getDataAddrForDiscontiguous(arrayPtr));
 #else /* defined(J9VM_ENV_DATA64) */
 	return false;
 #endif /* defined(J9VM_ENV_DATA64) */
@@ -222,9 +222,9 @@ bool
 GC_ArrayletObjectModel::shouldFixupDataAddr(MM_GCExtensionsBase *extensions, MM_ForwardedHeader *forwardedHeader)
 {
 #if defined(J9VM_ENV_DATA64)
-			return (InlineContiguous == getPreservedArrayLayout(forwardedHeader))
-			? shouldFixupContiguousDataAddr(extensions, (J9IndexableObject *)forwardedHeader->getObject())
-			: shouldFixupDiscontiguousDataAddr(extensions, (J9IndexableObject *)forwardedHeader->getObject());
+	return (InlineContiguous == getPreservedArrayLayout(forwardedHeader))
+	? shouldFixupContiguousDataAddr(extensions, (J9IndexableObject *)forwardedHeader->getObject())
+	: shouldFixupDiscontiguousDataAddr(extensions, (J9IndexableObject *)forwardedHeader->getObject());
 #else /* defined(J9VM_ENV_DATA64) */
 	return false;
 #endif /* defined(J9VM_ENV_DATA64) */
@@ -234,9 +234,10 @@ bool
 GC_ArrayletObjectModel::shouldFixupDataAddr(MM_GCExtensionsBase *extensions, J9IndexableObject *arrayPtr)
 {
 #if defined(J9VM_ENV_DATA64)
-	void *dataAddr = getDataAddrForIndexableObject(arrayPtr);
-	return isAddressWithinHeap(extensions, dataAddr);
 
+	return (InlineContiguous == getArrayLayout(arrayPtr))
+	? shouldFixupContiguousDataAddr(extensions, arrayPtr)
+	: shouldFixupDiscontiguousDataAddr(extensions, arrayPtr);
 #else /* defined(J9VM_ENV_DATA64) */
 	return false;
 #endif /* defined(J9VM_ENV_DATA64) */
