@@ -64,7 +64,6 @@ public:
 
 	struct GCmovedObjectHashCode movedObjectHashCodeCache; /**< Structure to aid on object movement and hashing */
 	bool shouldFixupDataAddr; /**< Boolean to check if dataAddr fixup is needed on object movement */
-	
 
 	/* Function members */
 private:
