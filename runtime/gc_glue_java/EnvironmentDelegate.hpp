@@ -63,6 +63,8 @@ public:
 	MM_ContinuationObjectBuffer *_continuationObjectBuffer; /**< The thread-specific buffer of recently allocated continuation objects */
 
 	struct GCmovedObjectHashCode movedObjectHashCodeCache; /**< Structure to aid on object movement and hashing */
+	bool shouldFixupDataAddr; /**< Boolean to check if dataAddr fixup is needed on object movement */
+	
 
 	/* Function members */
 private:
@@ -195,6 +197,8 @@ public:
 			/* calculate this BEFORE we (potentially) destroy the object */
 			_gcEnv.movedObjectHashCodeCache.originalHashCode = computeObjectAddressToHash((J9JavaVM *)_extensions->getOmrVM()->_language_vm, objectPtr);
 		}
+
+		_gcEnv.shouldFixupDataAddr = _extensions->indexableObjectModel.shouldFixupDataAddr(_extensions, (J9IndexableObject *)objectPtr);
 	}
 
 	/**
@@ -226,7 +230,7 @@ public:
 	#if defined(J9VM_GC_ENABLE_DOUBLE_MAP)
 				shouldFixupDataAddr = shouldFixupDataAddr && !indexableObjectModel->isDoubleMappingEnabled();
 	#endif /* defined(J9VM_GC_ENABLE_DOUBLE_MAP) */
-				if (shouldFixupDataAddr || indexableObjectModel->shouldFixupDataAddr(_extensions, (J9IndexableObject *)destinationObjectPtr)) {
+				if (shouldFixupDataAddr || _gcEnv.shouldFixupDataAddr) {
 				/**
 				 * Update the dataAddr internal field of the indexable object. The field being updated
 				 * points to the array data. In the case of contiguous data, it will point to the data
