@@ -2025,6 +2025,7 @@ MM_CopyForwardScheme::copy(MM_EnvironmentVLHGC *env, MM_AllocationContextTarok *
 					indexableObjectModel->fixupInternalLeafPointersAfterCopy((J9IndexableObject *)destinationObjectPtr, (J9IndexableObject *)forwardedHeader->getObject());
 
 #if defined(J9VM_ENV_DATA64)
+				if (_javaVM->isIndexableDataAddrPresent) {
 					/* If double mapping is enabled and the indexable object has been double mapped, there's no need to update the data pointer.
 					 * However, if either one of these statements is false than we must update it, because data pointer points to data within heap. */
 					bool shouldFixupDataAddr = !indexableObjectModel->isVirtualLargeObjectHeapEnabled();
@@ -2039,6 +2040,7 @@ MM_CopyForwardScheme::copy(MM_EnvironmentVLHGC *env, MM_AllocationContextTarok *
 						 * within heap. */
 						indexableObjectModel->fixupDataAddr(destinationObjectPtr);
 					}
+				}
 #endif /* defined(J9VM_ENV_DATA64) */
 				}
 
