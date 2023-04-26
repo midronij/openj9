@@ -63,9 +63,8 @@ public:
 	MM_ContinuationObjectBuffer *_continuationObjectBuffer; /**< The thread-specific buffer of recently allocated continuation objects */
 
 	struct GCmovedObjectHashCode movedObjectHashCodeCache; /**< Structure to aid on object movement and hashing */
-#if defined(J9VM_ENV_DATA64)
-	bool shouldFixupDataAddrForContiguous; /**< Boolean to check if dataAddr fixup is needed on contiguous indexable object movement */
-#endif /* defined(J9VM_ENV_DATA64) */
+	bool shouldFixupDataAddr; /**< Boolean to check if dataAddr fixup is needed on object movement */
+	
 
 	/* Function members */
 private:
@@ -199,16 +198,7 @@ public:
 			_gcEnv.movedObjectHashCodeCache.originalHashCode = computeObjectAddressToHash((J9JavaVM *)_extensions->getOmrVM()->_language_vm, objectPtr);
 		}
 
-#if defined(J9VM_ENV_DATA64)
-		if (objectModel->isIndexable(objectPtr)) {
-			GC_ArrayObjectModel *indexableObjectModel = &_extensions->indexableObjectModel;
-			if (_vmThread->isIndexableDataAddrPresent && indexableObjectModel->isInlineContiguousArraylet((J9IndexableObject *)objectPtr)) {
-				_gcEnv.shouldFixupDataAddrForContiguous = indexableObjectModel->shouldFixupDataAddrForContiguous((J9IndexableObject *)objectPtr);
-			} else {
-				_gcEnv.shouldFixupDataAddrForContiguous = false;
-			}
-		}
-#endif /* defined(J9VM_ENV_DATA64) */
+		_gcEnv.shouldFixupDataAddr = _extensions->indexableObjectModel.shouldFixupDataAddr(_extensions, (J9IndexableObject *)objectPtr);
 	}
 
 	/**
@@ -240,7 +230,7 @@ public:
 	#if defined(J9VM_GC_ENABLE_DOUBLE_MAP)
 				shouldFixupDataAddr = shouldFixupDataAddr && !indexableObjectModel->isDoubleMappingEnabled();
 	#endif /* defined(J9VM_GC_ENABLE_DOUBLE_MAP) */
-				if (shouldFixupDataAddr || indexableObjectModel->shouldFixupDataAddr(_extensions, (J9IndexableObject *)destinationObjectPtr)) {
+				if (shouldFixupDataAddr || _gcEnv.shouldFixupDataAddr) {
 				/**
 				 * Update the dataAddr internal field of the indexable object. The field being updated
 				 * points to the array data. In the case of contiguous data, it will point to the data
