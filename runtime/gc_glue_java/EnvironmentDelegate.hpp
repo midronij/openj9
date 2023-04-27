@@ -63,7 +63,7 @@ public:
 	MM_ContinuationObjectBuffer *_continuationObjectBuffer; /**< The thread-specific buffer of recently allocated continuation objects */
 
 	struct GCmovedObjectHashCode movedObjectHashCodeCache; /**< Structure to aid on object movement and hashing */
-	bool shouldFixupDataAddr; /**< Boolean to check if dataAddr fixup is needed on object movement */
+	bool shouldFixupDataAddrForContiguous; /**< Boolean to check if dataAddr fixup is needed on contiguous indexable object movement */
 
 	/* Function members */
 private:
@@ -186,6 +186,7 @@ public:
 	preObjectMoveForCompact(omrobjectptr_t objectPtr)
 	{
 		GC_ObjectModel *objectModel = &_extensions->objectModel;
+		GC_ArrayObjectModel *indexableObjectModel = &_extensions->indexableObjectModel;
 		bool hashed = objectModel->hasBeenHashed(objectPtr);
 		bool moved = objectModel->hasBeenMoved(objectPtr);
 
@@ -197,7 +198,15 @@ public:
 			_gcEnv.movedObjectHashCodeCache.originalHashCode = computeObjectAddressToHash((J9JavaVM *)_extensions->getOmrVM()->_language_vm, objectPtr);
 		}
 
-		_gcEnv.shouldFixupDataAddr = _extensions->indexableObjectModel.shouldFixupDataAddr(_extensions, (J9IndexableObject *)objectPtr);
+		if (objectModel->isIndexable(objectPtr)) {
+#if defined(J9VM_ENV_DATA64)
+			if (_vmThread->isIndexableDataAddrPresent && indexableObjectModel->isInlineContiguousArraylet((J9IndexableObject *)objectPtr)) {
+				_gcEnv.shouldFixupDataAddrForContiguous = indexableObjectModel->shouldFixupDataAddrForContiguous((J9IndexableObject *)objectPtr);
+			} else {
+				_gcEnv.shouldFixupDataAddrForContiguous = false;
+			}
+#endif /* defined(J9VM_ENV_DATA64) */
+		}
 	}
 
 	/**
@@ -221,23 +230,14 @@ public:
 
 		if (objectModel->isIndexable(destinationObjectPtr)) {
 #if defined(J9VM_ENV_DATA64)
-			if (_vmThread->isIndexableDataAddrPresent) {
-				/* If double mapping or off-heap is enabled and the indexable object has been double mapped, there's no need to update the data pointer.
-				 * However, if either one of these statements is false than we must update it, because data pointer points to data within heap.
-				 */
-				bool shouldFixupDataAddr = !indexableObjectModel->isVirtualLargeObjectHeapEnabled();
-	#if defined(J9VM_GC_ENABLE_DOUBLE_MAP)
-				shouldFixupDataAddr = shouldFixupDataAddr && !indexableObjectModel->isDoubleMappingEnabled();
-	#endif /* defined(J9VM_GC_ENABLE_DOUBLE_MAP) */
-				if (shouldFixupDataAddr || _gcEnv.shouldFixupDataAddr) {
+			if (_gcEnv.shouldFixupDataAddrForContiguous) {
 				/**
 				 * Update the dataAddr internal field of the indexable object. The field being updated
 				 * points to the array data. In the case of contiguous data, it will point to the data
 				 * itself, and in case of discontiguous data, it will be NULL. How to
 				 * update dataAddr is up to the target language that must override fixupDataAddr.
 				 */
-					indexableObjectModel->fixupDataAddr(destinationObjectPtr);
-				}
+				indexableObjectModel->setDataAddrForContiguous((J9IndexableObject *)destinationObjectPtr);
 			}
 #endif /* defined(J9VM_ENV_DATA64) */
 
