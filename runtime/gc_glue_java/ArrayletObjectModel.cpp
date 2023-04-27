@@ -46,6 +46,12 @@ GC_ArrayletObjectModel::AssertBadElementSize()
 }
 
 void
+GC_ArrayletObjectModel::AssertDiscontiguousArrayDataNull(J9IndexableObject *objPtr)
+{
+	Assert_MM_true(NULL == getDataAddrForDiscontiguous(objPtr));
+}
+
+void
 GC_ArrayletObjectModel::AssertContiguousArrayDataUnreachable()
 {
 	Assert_MM_unreachable();
@@ -199,45 +205,10 @@ GC_ArrayletObjectModel::isIndexableObjectDoubleMapped(MM_GCExtensionsBase *exten
 }
 
 bool
-GC_ArrayletObjectModel::shouldFixupContiguousDataAddr(MM_GCExtensionsBase *extensions, J9IndexableObject *arrayPtr)
+GC_ArrayletObjectModel::shouldFixupDataAddrForContiguous(J9IndexableObject *arrayPtr)
 {
 #if defined(J9VM_ENV_DATA64)
 	return ((void *)((uintptr_t)arrayPtr + contiguousIndexableHeaderSize()) == getDataAddrForContiguous(arrayPtr));
-#else /* defined(J9VM_ENV_DATA64) */
-	return false;
-#endif /* defined(J9VM_ENV_DATA64) */
-}
-
-bool
-GC_ArrayletObjectModel::shouldFixupDiscontiguousDataAddr(MM_GCExtensionsBase *extensions, J9IndexableObject *arrayPtr)
-{
-#if defined(J9VM_ENV_DATA64)
-	return (NULL == getDataAddrForDiscontiguous(arrayPtr));
-#else /* defined(J9VM_ENV_DATA64) */
-	return false;
-#endif /* defined(J9VM_ENV_DATA64) */
-}
-
-bool
-GC_ArrayletObjectModel::shouldFixupDataAddr(MM_GCExtensionsBase *extensions, MM_ForwardedHeader *forwardedHeader)
-{
-#if defined(J9VM_ENV_DATA64)
-	return (InlineContiguous == getPreservedArrayLayout(forwardedHeader))
-	? shouldFixupContiguousDataAddr(extensions, (J9IndexableObject *)forwardedHeader->getObject())
-	: shouldFixupDiscontiguousDataAddr(extensions, (J9IndexableObject *)forwardedHeader->getObject());
-#else /* defined(J9VM_ENV_DATA64) */
-	return false;
-#endif /* defined(J9VM_ENV_DATA64) */
-}
-
-bool
-GC_ArrayletObjectModel::shouldFixupDataAddr(MM_GCExtensionsBase *extensions, J9IndexableObject *arrayPtr)
-{
-#if defined(J9VM_ENV_DATA64)
-
-	return (InlineContiguous == getArrayLayout(arrayPtr))
-	? shouldFixupContiguousDataAddr(extensions, arrayPtr)
-	: shouldFixupDiscontiguousDataAddr(extensions, arrayPtr);
 #else /* defined(J9VM_ENV_DATA64) */
 	return false;
 #endif /* defined(J9VM_ENV_DATA64) */
