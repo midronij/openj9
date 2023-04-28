@@ -10526,6 +10526,7 @@ static TR::Register *inlineStringHashcode(TR::Node *node, TR::CodeGenerator *cg)
     TR::LabelSymbol *POSTVSXLabel = generateLabelSymbol(cg);
     TR::LabelSymbol *endLabel = generateLabelSymbol(cg);
 
+    // sverma: teach inlineStringHashcode about dataAddr pointer
     // Skip header of the array
     // v = v + offset<<1
     // end = v + count<<1
