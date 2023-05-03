@@ -6381,7 +6381,7 @@ bool TR_EscapeAnalysis::fixupFieldAccessForNonContiguousAllocation(TR::Node *nod
             }
          }
       if (trace())
-         traceMsg(comp(), "Change node [%p] into a direct load or store of #%d (%d bytes) field %d cand %p\n", node, autoSymRef->getReferenceNumber(), autoSymRef->getSymbol()->getSize(), i, candidate);
+         traceMsg(comp(), "Change node [%p] into a direct load or store of #%d (%d bytes) field %d cand %p\n", node, autoSymRef->getReferenceNumber(), autoSymRef->getSymbol()->getSize(), i, candidate->_node);
 
       if (parent)
          {
