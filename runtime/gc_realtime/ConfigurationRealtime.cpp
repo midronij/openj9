@@ -27,6 +27,7 @@
 
 #include "omr.h"
 #include "omrcfg.h"
+#include "modronnls.h"
 
 #include "ConfigurationRealtime.hpp"
 
@@ -113,13 +114,13 @@ MM_ConfigurationRealtime::createHeapWithManager(MM_EnvironmentBase *env, uintptr
 
 #if defined(J9VM_ENV_DATA64)
 	if (extensions->isVirtualLargeObjectHeapRequested) {
-		j9tty_printf(PORTLIB, "WARNING: '-XX:enableVirtualLargeObjectHeap' is not supported with '-Xgcpolicy:metronome'. Running without option '-XX:enableVirtualLargeObjectHeap'.\n");
+		j9nls_printf(PORTLIB, J9NLS_WARNING, J9NLS_GC_OPTIONS_VIRTUAL_LARGE_OBJECT_HEAP_NOT_SUPPORTED_WARN, "metronome");
 	}
 #endif /* defined(J9VM_ENV_DATA64) */
 
 #if defined(J9VM_GC_ENABLE_DOUBLE_MAP)
 	if (extensions->isArrayletDoubleMapRequested) {
-		j9tty_printf(PORTLIB, "WARNING: '-Xgc:enableArrayletDoubleMapping' is not supported with '-Xgcpolicy:metronome'. Running without option '-Xgc:enableArrayletDoubleMapping'.\n");
+		j9nls_printf(PORTLIB, J9NLS_WARNING, J9NLS_GC_OPTIONS_ARRAYLET_DOUBLE_MAPPING_NOT_SUPPORTED_WARN, "metronome");
 	}
 #endif /* defined(J9VM_GC_ENABLE_DOUBLE_MAP) */
 
