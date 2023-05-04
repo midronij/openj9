@@ -46,12 +46,6 @@ GC_ArrayletObjectModel::AssertBadElementSize()
 }
 
 void
-GC_ArrayletObjectModel::AssertDiscontiguousArrayDataNull(J9IndexableObject *objPtr)
-{
-	Assert_MM_true(NULL == getDataAddrForDiscontiguous(objPtr));
-}
-
-void
 GC_ArrayletObjectModel::AssertContiguousArrayDataUnreachable()
 {
 	Assert_MM_unreachable();
