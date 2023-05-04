@@ -1076,8 +1076,6 @@ public:
 			if (shouldFixupDataAddrForContiguous((J9IndexableObject *)forwardedHeader->getObject())) {
 				setDataAddrForContiguous(j9ArrayPtr);
 			}
-		} else {
-			AssertDiscontiguousArrayDataNull(j9ArrayPtr);
 		}
 #endif /* J9VM_ENV_DATA64 */
 	}
@@ -1383,11 +1381,6 @@ public:
 	 * Asserts that an Arraylet has true discontiguous layout
 	 */
 	void AssertDiscontiguousArrayletLayout(J9IndexableObject *objPtr);
-
-	/**
-	 * Asserts discontiguous array data is NULL.
-	 */
-	void AssertDiscontiguousArrayDataNull(J9IndexableObject *objPtr);
 
 	/**
 	 * Asserts unreachable code if either off-heap or double-mapping is enabled.
