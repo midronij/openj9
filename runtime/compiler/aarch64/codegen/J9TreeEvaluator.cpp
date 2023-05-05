@@ -6929,7 +6929,7 @@ J9::ARM64::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
 #ifndef OSX
          case TR::java_util_zip_CRC32_update:
             {
-            if (cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_ARM64_CRC32) && (!disableCRC32))
+            if (cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_ARM64_CRC32) && !disableCRC32)
                {
                resultReg = inlineCRC32UpdateOneByte(node, cg);
                return true;
@@ -6943,7 +6943,7 @@ J9::ARM64::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
          case TR::java_util_zip_CRC32_updateBytes:
 #endif
             {
-            if ((!TR::Compiler->om.canGenerateArraylets()) && cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_ARM64_CRC32) && (!disableCRC32))
+            if (!TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled() && cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_ARM64_CRC32) && !disableCRC32)
                {
                resultReg = inlineCRC32CUpdateBytes(node, cg, false, false);
                return true;
@@ -6954,7 +6954,7 @@ J9::ARM64::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
 
          case TR::java_util_zip_CRC32C_updateBytes:
             {
-            if ((!TR::Compiler->om.canGenerateArraylets()) && cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_ARM64_CRC32) && (!disableCRC32))
+            if (!TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled() && cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_ARM64_CRC32) && !disableCRC32)
                {
                resultReg = inlineCRC32CUpdateBytes(node, cg, false, true);
                return true;
@@ -6969,7 +6969,7 @@ J9::ARM64::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
          case TR::java_util_zip_CRC32_updateByteBuffer:
 #endif
             {
-            if ((!TR::Compiler->om.canGenerateArraylets()) && cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_ARM64_CRC32) && (!disableCRC32))
+            if (!TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled() && cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_ARM64_CRC32) && !disableCRC32)
                {
                resultReg = inlineCRC32CUpdateBytes(node, cg, true, false);
                return true;
@@ -6980,7 +6980,7 @@ J9::ARM64::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
 
          case TR::java_util_zip_CRC32C_updateDirectByteBuffer:
             {
-            if ((!TR::Compiler->om.canGenerateArraylets()) && cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_ARM64_CRC32) && (!disableCRC32))
+            if (!TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled() && cg->comp()->target().cpu.supportsFeature(OMR_FEATURE_ARM64_CRC32) && !disableCRC32)
                {
                resultReg = inlineCRC32CUpdateBytes(node, cg, true, true);
                return true;
