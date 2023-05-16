@@ -11787,9 +11787,8 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
          if (!methodSymbol->isNative())
             break;
 
-         // When dealing with array object; don't inline if arraylets or off heap is enabled
          if (node->isSafeForCGToFastPathUnsafeCall()
-            && (node->isUnsafeGetPutCASCallOnNonArray() || (!TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled())))
+            && (node->isUnsafeGetPutCASCallOnNonArray() || !TR::Compiler->om.canGenerateArraylets()))
             {
             resultReg = VMinlineCompareAndSwap(node, cg, false);
             return true;
@@ -11803,9 +11802,8 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
          if (!methodSymbol->isNative())
             break;
 
-         // When dealing with array object; don't inline if arraylets or off heap is enabled
          if (node->isSafeForCGToFastPathUnsafeCall()
-            && (node->isUnsafeGetPutCASCallOnNonArray() || (!TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled())))
+            && (node->isUnsafeGetPutCASCallOnNonArray() || !TR::Compiler->om.canGenerateArraylets()))
             {
             resultReg = comp->target().is64Bit() ? VMinlineCompareAndSwap(node, cg, true) : inlineAtomicOperation(node, cg, methodSymbol);
             return true;
@@ -11817,9 +11815,8 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
          if (!methodSymbol->isNative())
             break;
 
-         // When dealing with array object; don't inline if arraylets or off heap is enabled
          if (node->isSafeForCGToFastPathUnsafeCall()
-            && (node->isUnsafeGetPutCASCallOnNonArray() || (!TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled())))
+            && (node->isUnsafeGetPutCASCallOnNonArray() || !TR::Compiler->om.canGenerateArraylets()))
             {
             resultReg = VMinlineCompareAndSwapObject(node, cg);
             return true;
