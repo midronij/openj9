@@ -656,7 +656,7 @@ J9::CodeGenerator::lowerTreesPreChildrenVisit(TR::Node *parent, TR::TreeTop *tre
          // Test for isNative to distinguish between them.
          if (methodSymbol->getRecognizedMethod() == TR::sun_misc_Unsafe_compareAndSwapObject_jlObjectJjlObjectjlObject_Z &&
             methodSymbol->isNative() &&
-            (!TR::Compiler->om.canGenerateArraylets() || !TR::Compiler->om.isOffHeapAllocationEnabled() || parent->isUnsafeGetPutCASCallOnNonArray()) &&
+            (!TR::Compiler->om.canGenerateArraylets() || parent->isUnsafeGetPutCASCallOnNonArray()) &&
             parent->isSafeForCGToFastPathUnsafeCall())
             {
             TR_BitVector childrenToBeLowered(parent->getNumChildren(), self()->comp()->trMemory(), stackAlloc);
