@@ -8275,7 +8275,24 @@ static TR::Register *VMinlineCompareAndSwap(TR::Node *node, TR::CodeGenerator *c
          }
       }
 
-   resultReg = genCAS(node, cg, objReg, offsetReg, oldVReg, newVReg, cndReg, doneLabel, secondChild, oldValue, oldValueInReg, isLong, casWithoutSync);
+   //check if off heap is enabled and if object is of type array
+   TR_PPCScratchRegisterManager *srm = cg->generateScratchRegisterManager();
+   TR::Register *dataAddrReg = objReg;
+
+   if (TR::Compiler->om.isOffHeapAllocationEnabled() && !node->isUnsafeGetPutCASCallOnNonArray())
+   {
+      //load dataAddr into some register
+      dataAddrReg = srm->findOrCreateScratchRegister();
+
+      TR::MemoryReference *dataAddrSlotMR = TR::MemoryReference::createWithDisplacement(cg, objReg, fej9->getOffsetOfContiguousDataAddrField(), TR::Compiler->om.sizeofReferenceAddress());
+      generateTrg1MemInstruction(cg, TR::InstOpCode::Op_load, node, dataAddrReg, dataAddrSlotMR);
+
+      //subtract array header size from offset
+      int headerSize = TR::Compiler->om.contiguousArrayHeaderSizeInBytes();
+      generateTrg1Src1ImmInstruction(cg, TR::InstOpCode::addi, node, offsetReg, offsetReg, -headerSize);
+   }
+
+   resultReg = genCAS(node, cg, dataAddrReg, offsetReg, oldVReg, newVReg, cndReg, doneLabel, secondChild, oldValue, oldValueInReg, isLong, casWithoutSync);
 
    conditions = new (cg->trHeapMemory()) TR::RegisterDependencyConditions(6, 6, cg->trMemory());
    TR::addDependency(conditions, objReg, TR::RealRegister::NoReg, TR_GPR, cg);
@@ -8289,6 +8306,10 @@ static TR::Register *VMinlineCompareAndSwap(TR::Node *node, TR::CodeGenerator *c
 
    generateDepLabelInstruction(cg, TR::InstOpCode::label, node, doneLabel, conditions);
 
+   if (dataAddrReg && dataAddrReg != objReg)
+      srm->reclaimScratchRegister(dataAddrReg);
+   srm->stopUsingRegisters();
+   
    cg->stopUsingRegister(cndReg);
    cg->recursivelyDecReferenceCount(firstChild);
    cg->decReferenceCount(secondChild);
