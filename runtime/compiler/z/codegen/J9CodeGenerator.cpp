@@ -88,13 +88,13 @@ J9::Z::CodeGenerator::initialize()
       cg->setSupportsInlineStringCaseConversion();
 
    if (cg->getSupportsVectorRegisters() && !comp->getOption(TR_DisableFastStringIndexOf) &&
-       !TR::Compiler->om.canGenerateArraylets())
+       !TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled())
       {
       cg->setSupportsInlineStringIndexOf();
       }
 
    if (cg->getSupportsVectorRegisters() && !comp->getOption(TR_DisableSIMDStringHashCode) &&
-       !TR::Compiler->om.canGenerateArraylets())
+       !TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled())
       {
       cg->setSupportsInlineStringHashCode();
       }
@@ -119,7 +119,7 @@ J9::Z::CodeGenerator::initialize()
       }
 
    static char *disableInlineEncodeASCII = feGetEnv("TR_disableInlineEncodeASCII");
-   if (comp->fej9()->isStringCompressionEnabledVM() && cg->getSupportsVectorRegisters() && !TR::Compiler->om.canGenerateArraylets() && !disableInlineEncodeASCII)
+   if (comp->fej9()->isStringCompressionEnabledVM() && cg->getSupportsVectorRegisters() && !TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled() && !disableInlineEncodeASCII)
       {
       cg->setSupportsInlineEncodeASCII();
       }
@@ -214,7 +214,7 @@ J9::Z::CodeGenerator::initialize()
       }
 
    static bool disableIntegerToChars = (feGetEnv("TR_DisableIntegerToChars") != NULL);
-   if (cg->getSupportsVectorRegisters() && !TR::Compiler->om.canGenerateArraylets() && !disableIntegerToChars && comp->target().cpu.isAtLeast(OMR_PROCESSOR_S390_Z16))
+   if (cg->getSupportsVectorRegisters() && !TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled() && !disableIntegerToChars && comp->target().cpu.isAtLeast(OMR_PROCESSOR_S390_Z16))
       {
       cg->setSupportsIntegerToChars();
       cg->setSupportsIntegerStringSize();
@@ -3684,8 +3684,9 @@ J9::Z::CodeGenerator::suppressInliningOfRecognizedMethod(TR::RecognizedMethod me
       }
 
    static bool disableCRC32CAcceleration = (feGetEnv("TR_DisableCRC32CAcceleration") != NULL);
-   if (!disableCRC32CAcceleration && self()->getSupportsVectorRegisters())
+   if (!disableCRC32CAcceleration && self()->getSupportsVectorRegisters() && !TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled())
       {
+      // TODO_sverma: shouldn't we be checking for arraylets here?
       if (method == TR::java_util_zip_CRC32C_updateBytes ||
          method == TR::java_util_zip_CRC32C_updateDirectByteBuffer)
          {
@@ -3792,7 +3793,8 @@ J9::Z::CodeGenerator::inlineDirectCall(
          if (!methodSymbol->isNative())
             break;
 
-         if ((!TR::Compiler->om.canGenerateArraylets() || node->isUnsafeGetPutCASCallOnNonArray()) && node->isSafeForCGToFastPathUnsafeCall())
+         if (node->isSafeForCGToFastPathUnsafeCall()
+            && ((!TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled()) || node->isUnsafeGetPutCASCallOnNonArray()))
             {
             resultReg = TR::TreeEvaluator::VMinlineCompareAndSwap(node, cg, TR::InstOpCode::CS, IS_NOT_OBJ);
             return true;
@@ -3803,7 +3805,9 @@ J9::Z::CodeGenerator::inlineDirectCall(
          if (!methodSymbol->isNative())
             break;
 
-         if (comp->target().is64Bit() && (!TR::Compiler->om.canGenerateArraylets() || node->isUnsafeGetPutCASCallOnNonArray()) && node->isSafeForCGToFastPathUnsafeCall())
+         if (comp->target().is64Bit()
+            && node->isSafeForCGToFastPathUnsafeCall()
+            && ((!TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled()) || node->isUnsafeGetPutCASCallOnNonArray()))
             {
             resultReg = TR::TreeEvaluator::VMinlineCompareAndSwap(node, cg, TR::InstOpCode::CSG, IS_NOT_OBJ);
             return true;
@@ -3816,7 +3820,8 @@ J9::Z::CodeGenerator::inlineDirectCall(
          if (!methodSymbol->isNative())
             break;
 
-         if ((!TR::Compiler->om.canGenerateArraylets() || node->isUnsafeGetPutCASCallOnNonArray()) && node->isSafeForCGToFastPathUnsafeCall())
+         if (node->isSafeForCGToFastPathUnsafeCall()
+            && ((!TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled()) || node->isUnsafeGetPutCASCallOnNonArray()))
             {
             resultReg = TR::TreeEvaluator::VMinlineCompareAndSwap(node, cg, (comp->useCompressedPointers() ? TR::InstOpCode::CS : TR::InstOpCode::getCmpAndSwapOpCode()), IS_OBJ);
             return true;

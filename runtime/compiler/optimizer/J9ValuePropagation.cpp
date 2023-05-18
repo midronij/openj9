@@ -381,12 +381,12 @@ bool J9::ValuePropagation::transformIndexOfKnownString(
             {
             if (is16Bit)
                {
-               uintptr_t element = TR::Compiler->om.getAddressOfElement(comp(), string, (2 * i) + TR::Compiler->om.contiguousArrayHeaderSizeInBytes());
+               uintptr_t element = TR::Compiler->om.getAddressOfElement(comp(), string, (2 * i));
                ch  = *((uint16_t*)element);
                }
             else
                {
-               uintptr_t element = TR::Compiler->om.getAddressOfElement(comp(), string, i + TR::Compiler->om.contiguousArrayHeaderSizeInBytes());
+               uintptr_t element = TR::Compiler->om.getAddressOfElement(comp(), string, i);
                uint8_t chByte  = *((uint8_t*)element);
                ch = chByte;
                }
@@ -418,12 +418,12 @@ bool J9::ValuePropagation::transformIndexOfKnownString(
          {
          if (is16Bit)
             {
-            uintptr_t element = TR::Compiler->om.getAddressOfElement(comp(), string, (2 * start) + TR::Compiler->om.contiguousArrayHeaderSizeInBytes());
+            uintptr_t element = TR::Compiler->om.getAddressOfElement(comp(), string, (2 * start));
             ch  = *((uint16_t*)element);
             }
          else
             {
-            uintptr_t element = TR::Compiler->om.getAddressOfElement(comp(), string, start + TR::Compiler->om.contiguousArrayHeaderSizeInBytes());
+            uintptr_t element = TR::Compiler->om.getAddressOfElement(comp(), string, start);
             int8_t chByte  = *((uint8_t*)element);
             ch = chByte;
             }
@@ -456,12 +456,12 @@ bool J9::ValuePropagation::transformIndexOfKnownString(
             {
             if (is16Bit)
                {
-               uintptr_t element = TR::Compiler->om.getAddressOfElement(comp(), string, (2 * i) + TR::Compiler->om.contiguousArrayHeaderSizeInBytes());
+               uintptr_t element = TR::Compiler->om.getAddressOfElement(comp(), string, (2 * i));
                ch  = *((uint16_t*)element);
                }
             else
                {
-               uintptr_t element = TR::Compiler->om.getAddressOfElement(comp(), string, i + TR::Compiler->om.contiguousArrayHeaderSizeInBytes());
+               uintptr_t element = TR::Compiler->om.getAddressOfElement(comp(), string, i);
                int8_t chByte  = *((uint8_t*)element);
                ch = chByte;
                }
@@ -3044,11 +3044,11 @@ J9::ValuePropagation::doDelayedTransformations()
 
       if (isLoad)
          {
-         if (isFlattenedElement)
+         if (isFlattenedElement) // TODO_sverma: verify that this still works
             {
             transformFlattenedArrayElementLoad(arrayOpCallToTransform->_arrayClass, callNode);
             }
-         else if (isFlattenedElementUseTypeHint)
+         else if (isFlattenedElementUseTypeHint) // TODO_sverma: verify that this still works
             {
             transformFlattenedArrayElementLoadStoreUseTypeHint(arrayOpCallToTransform->_arrayClass, callNode, callTree, true /*isLoad*/, false);
             isCallTreeRemoved = true;
