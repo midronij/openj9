@@ -8294,7 +8294,11 @@ static TR::Register *VMinlineCompareAndSwap(TR::Node *node, TR::CodeGenerator *c
 
    resultReg = genCAS(node, cg, dataAddrReg, offsetReg, oldVReg, newVReg, cndReg, doneLabel, secondChild, oldValue, oldValueInReg, isLong, casWithoutSync);
 
-   conditions = new (cg->trHeapMemory()) TR::RegisterDependencyConditions(6, 6, cg->trMemory());
+   int numDeps = 6;
+   if (dataAddrReg && dataAddrReg != objReg) 
+      numDeps++;
+
+   conditions = new (cg->trHeapMemory()) TR::RegisterDependencyConditions(numDeps, numDeps, cg->trMemory());
    TR::addDependency(conditions, objReg, TR::RealRegister::NoReg, TR_GPR, cg);
    conditions->getPostConditions()->getRegisterDependency(0)->setExcludeGPR0();
    TR::addDependency(conditions, offsetReg, TR::RealRegister::NoReg, TR_GPR, cg);
@@ -8303,6 +8307,9 @@ static TR::Register *VMinlineCompareAndSwap(TR::Node *node, TR::CodeGenerator *c
    if (oldValueInReg)
       TR::addDependency(conditions, oldVReg, TR::RealRegister::NoReg, TR_GPR, cg);
    TR::addDependency(conditions, cndReg, TR::RealRegister::cr0, TR_CCR, cg);
+
+   if (dataAddrReg && dataAddrReg != objReg)
+      srm->addScratchRegistersToDependencyList(conditions);
 
    generateDepLabelInstruction(cg, TR::InstOpCode::label, node, doneLabel, conditions);
 
