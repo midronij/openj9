@@ -11910,30 +11910,38 @@ J9::Z::TreeEvaluator::VMinlineCompareAndSwap(TR::Node *node, TR::CodeGenerator *
 
    generateRIInstruction(cg, TR::InstOpCode::getLoadHalfWordImmOpCode(), node, resultReg, 0x0);
 
-   //  We can run into trouble when the offset value gets too big, or it may
-   //  simply not nbe known at compile time.
-   //
-   if (offsetNode->getOpCode().isLoadConst() && offsetNode->getRegister()==NULL)
+   intptr_t offsetValue;
+   if (offsetNode->getOpCode().isLoadConst() && offsetNode->getRegister()== NULL)
       {
       // We know at compile time
-      intptr_t offsetValue = offsetNode->getLongInt();
-      if (offsetValue>=0 && offsetValue<MAXDISP)
-         {
-         casMemRef = generateS390MemoryReference(objReg, offsetValue, cg);
-         }
-         //  ADD Golden Eagle support here if we ever see this path take (unlikely)
+      offsetValue = offsetNode->getLongInt();
       }
 
-   //  We couldn't figure out how to get the offset into the DISP field of the CAS inst
-   //  So use an explicit local ADD
-   //
-   if (casMemRef == NULL)  // Not setup, hence we need a reg
+   TR::MemoryReference *dataAddrSlotMR = NULL;
+   TR::Register *baseAddressReg = objReg;
+   if (offsetValue < 0 || offsetValue > MAXDISP)
       {
+      // We couldn't figure out how to get the offset into the DISP field of the CAS inst.
       scratchReg = cg->gprClobberEvaluate(offsetNode);
-
-      generateRRInstruction(cg, TR::InstOpCode::getAddRegOpCode(), node, scratchReg,objReg);
-      casMemRef = generateS390MemoryReference(scratchReg, 0, cg);
       }
+
+   intptr_t displacementCorrection = 0;
+#ifdef TR_TARGET_64BIT
+   if (TR::Compiler->om.isOffHeapAllocationEnabled() && !node->isUnsafeGetPutCASCallOnNonArray())
+      {
+      // Load dataAddr field into a new register.
+      dataAddrSlotMR = generateS390MemoryReference(objReg, comp->fej9()->getOffsetOfContiguousDataAddrField(), cg);
+      baseAddressReg = cg->allocateRegister();
+      generateRXInstruction(cg, TR::InstOpCode::getLoadOpCode(), node, baseAddressReg, dataAddrSlotMR);
+
+      displacementCorrection = -TR::Compiler->om.contiguousArrayHeaderSizeInBytes();
+      }
+#endif /* TR_TARGET_64BIT */
+
+   if (scratchReg)
+      casMemRef = generateS390MemoryReference(baseAddressReg, scratchReg, displacementCorrection, cg);
+   else
+      casMemRef = generateS390MemoryReference(baseAddressReg, offsetValue + displacementCorrection, cg);
 
    if (TR::Compiler->om.readBarrierType() != gc_modron_readbar_none && isObj)
       {
@@ -12036,6 +12044,10 @@ J9::Z::TreeEvaluator::VMinlineCompareAndSwap(TR::Node *node, TR::CodeGenerator *
    if (scratchReg)
       {
       cg->stopUsingRegister(scratchReg);
+      }
+   if (dataAddrSlotMR)
+      {
+      cg->stopUsingRegister(baseAddressReg);
       }
 
    if (isValueCompressedReference)
