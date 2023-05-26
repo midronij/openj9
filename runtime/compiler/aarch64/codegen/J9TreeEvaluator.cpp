@@ -4810,15 +4810,31 @@ genCAS(TR::Node *node, TR::CodeGenerator *cg, TR_ARM64ScratchRegisterManager *sr
    TR::Register *resultReg = cg->allocateRegister();
    TR::InstOpCode::Mnemonic op;
 
+   intptr_t displacementCorrection = 0;
+   TR::Register *baseAddressReg = objReg;
+   TR::MemoryReference *dataAddrSlotMR = NULL;
+#ifdef TR_TARGET_64BIT
+   if (TR::Compiler->om.isOffHeapAllocationEnabled() && !node->isUnsafeGetPutCASCallOnNonArray())
+      {
+      // Load dataAddr field into a new register.
+      dataAddrSlotMR = TR::MemoryReference::createWithDisplacement(cg, objReg, comp->fej9()->getOffsetOfContiguousDataAddrField());
+      baseAddressReg = addrReg;
+      generateTrg1MemInstruction(cg, TR::InstOpCode::ldrimmw, node, baseAddressReg, dataAddrSlotMR);
+
+      displacementCorrection = -TR::Compiler->om.contiguousArrayHeaderSizeInBytes();
+      }
+#endif /* TR_TARGET_64BIT */
 
    if (offsetInReg)
       {
-      generateTrg1Src2Instruction(cg, TR::InstOpCode::addx, node, addrReg, objReg, offsetReg); // ldxr/stxr instructions does not take offset
+      generateTrg1Src2Instruction(cg, TR::InstOpCode::addx, node, addrReg, baseAddressReg, offsetReg); // ldxr/stxr instructions does not take offset
       }
    else
       {
-      generateTrg1Src1ImmInstruction(cg, TR::InstOpCode::addimmx, node, addrReg, objReg, offset); // ldxr/stxr instructions does not take offset
+      generateTrg1Src1ImmInstruction(cg, TR::InstOpCode::addimmx, node, addrReg, baseAddressReg, offset); // ldxr/stxr instructions does not take offset
       }
+
+   TR::MemoryReference *casMemRef = TR::MemoryReference::createWithDisplacement(cg, addrReg, displacementCorrection);
 
    const bool createDoneLabel = (doneLabel == NULL);
 
@@ -4834,7 +4850,7 @@ genCAS(TR::Node *node, TR::CodeGenerator *cg, TR_ARM64ScratchRegisterManager *sr
        */
       generateMovInstruction(cg, node, resultReg, oldVReg, is64bit);
       op = casWithoutSync ? (is64bit ? TR::InstOpCode::casx : TR::InstOpCode::casw) : (is64bit ? TR::InstOpCode::casalx : TR::InstOpCode::casalw);
-      generateTrg1MemSrc1Instruction(cg, op, node, resultReg, TR::MemoryReference::createWithDisplacement(cg, addrReg, 0), newVReg);
+      generateTrg1MemSrc1Instruction(cg, op, node, resultReg, casMemRef, newVReg);
       generateCompareInstruction(cg, node, resultReg, oldVReg, is64bit);
       generateCSetInstruction(cg, node, resultReg, TR::CC_EQ);
       if (!createDoneLabel)
@@ -4865,7 +4881,7 @@ genCAS(TR::Node *node, TR::CodeGenerator *cg, TR_ARM64ScratchRegisterManager *sr
        *
        */
       op = is64bit ? TR::InstOpCode::ldxrx : TR::InstOpCode::ldxrw;
-      generateTrg1MemInstruction(cg, op, node, resultReg, TR::MemoryReference::createWithDisplacement(cg, addrReg, 0));
+      generateTrg1MemInstruction(cg, op, node, resultReg, casMemRef);
       if (oldValueInReg)
          generateCompareInstruction(cg, node, resultReg, oldVReg, is64bit);
       else
@@ -4882,7 +4898,7 @@ genCAS(TR::Node *node, TR::CodeGenerator *cg, TR_ARM64ScratchRegisterManager *sr
          {
          op = is64bit ? TR::InstOpCode::stlxrx : TR::InstOpCode::stlxrw;
          }
-      generateTrg1MemSrc1Instruction(cg, op, node, resultReg, TR::MemoryReference::createWithDisplacement(cg, addrReg, 0), newVReg);
+      generateTrg1MemSrc1Instruction(cg, op, node, resultReg, casMemRef, newVReg);
       generateCompareBranchInstruction(cg, TR::InstOpCode::cbnzx, node, resultReg, loopLabel);
 
       if (!casWithoutSync)
@@ -5003,7 +5019,7 @@ VMinlineCompareAndSwap(TR::Node *node, TR::CodeGenerator *cg, bool isLong)
 static TR::Register *VMinlineCompareAndSwapObject(TR::Node *node, TR::CodeGenerator *cg)
    {
    TR::Compilation *comp = cg->comp();
-   TR_J9VMBase *fej9 = reinterpret_cast<TR_J9VMBase *>(comp->fe());
+   TR_J9VMBase *fej9 = comp->fej9();
    TR::Register *objReg, *offsetReg, *resultReg;
    TR::Node *firstChild, *secondChild, *thirdChild, *fourthChild, *fifthChild;
    TR::LabelSymbol *doneLabel;
@@ -6022,9 +6038,9 @@ J9::ARM64::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
             if (!methodSymbol->isNative())
                break;
 
-            // When dealing with array object; don't inline if arraylets or off heap is enabled
+            // Don't inline if arraylets are enabled becase unsafe API needs contiguously allocated array
             if (node->isSafeForCGToFastPathUnsafeCall()
-               && (node->isUnsafeGetPutCASCallOnNonArray() || (!TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled())))
+               && (node->isUnsafeGetPutCASCallOnNonArray() || !TR::Compiler->om.canGenerateArraylets()))
                {
                resultReg = VMinlineCompareAndSwap(node, cg, false);
                return true;
@@ -6038,9 +6054,9 @@ J9::ARM64::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
             if (!methodSymbol->isNative())
                break;
 
-            // When dealing with array object; don't inline if arraylets or off heap is enabled
+            // Don't inline if arraylets are enabled becase unsafe API needs contiguously allocated array
             if (node->isSafeForCGToFastPathUnsafeCall()
-               && (node->isUnsafeGetPutCASCallOnNonArray() || (!TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled())))
+               && (node->isUnsafeGetPutCASCallOnNonArray() || !TR::Compiler->om.canGenerateArraylets()))
                {
                resultReg = VMinlineCompareAndSwap(node, cg, true);
                return true;
@@ -6053,9 +6069,9 @@ J9::ARM64::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
             if (!methodSymbol->isNative())
                break;
 
-            // When dealing with array object; don't inline if arraylets or off heap is enabled
+            // Don't inline if arraylets are enabled becase unsafe API needs contiguously allocated array
             if (node->isSafeForCGToFastPathUnsafeCall()
-               && (node->isUnsafeGetPutCASCallOnNonArray() || (!TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled())))
+               && (node->isUnsafeGetPutCASCallOnNonArray() || !TR::Compiler->om.canGenerateArraylets()))
                {
                resultReg = VMinlineCompareAndSwapObject(node, cg);
                return true;
