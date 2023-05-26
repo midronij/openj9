@@ -11787,7 +11787,7 @@ void J9::Z::TreeEvaluator::genWrtbarForArrayCopy(TR::Node *node, TR::Register *s
 TR::Register*
 J9::Z::TreeEvaluator::VMinlineCompareAndSwap(TR::Node *node, TR::CodeGenerator *cg, TR::InstOpCode::Mnemonic casOp, bool isObj)
    {
-   TR::Register *scratchReg = NULL;
+   TR::Register *offsetReg = NULL;
    TR::Register *objReg, *oldVReg, *newVReg;
    TR::Register *resultReg = cg->allocateRegister();
    TR::LabelSymbol *doneLabel = generateLabelSymbol(cg);
@@ -11891,7 +11891,7 @@ J9::Z::TreeEvaluator::VMinlineCompareAndSwap(TR::Node *node, TR::CodeGenerator *
    if (offsetValue < 0 || offsetValue > MAXDISP)
       {
       // We couldn't figure out how to get the offset into the DISP field of the CAS inst.
-      scratchReg = cg->gprClobberEvaluate(offsetNode);
+      offsetReg = cg->gprClobberEvaluate(offsetNode);
       }
 
    intptr_t displacementCorrection = 0;
@@ -11907,8 +11907,8 @@ J9::Z::TreeEvaluator::VMinlineCompareAndSwap(TR::Node *node, TR::CodeGenerator *
       }
 #endif /* TR_TARGET_64BIT */
 
-   if (scratchReg)
-      casMemRef = generateS390MemoryReference(baseAddressReg, scratchReg, displacementCorrection, cg);
+   if (offsetReg)
+      casMemRef = generateS390MemoryReference(baseAddressReg, offsetReg, displacementCorrection, cg);
    else
       casMemRef = generateS390MemoryReference(baseAddressReg, offsetValue + displacementCorrection, cg);
 
@@ -12010,9 +12010,9 @@ J9::Z::TreeEvaluator::VMinlineCompareAndSwap(TR::Node *node, TR::CodeGenerator *
       {
       cg->stopUsingRegister(newVReg);
       }
-   if (scratchReg)
+   if (offsetReg)
       {
-      cg->stopUsingRegister(scratchReg);
+      cg->stopUsingRegister(offsetReg);
       }
    if (dataAddrSlotMR)
       {
