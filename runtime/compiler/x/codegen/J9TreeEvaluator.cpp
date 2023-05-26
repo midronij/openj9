@@ -9756,29 +9756,31 @@ inlineCompareAndSwapNative(
       }
    cg->decReferenceCount(offsetChild);
 
-   TR::MemoryReference *mr;
+   TR::MemoryReference *mr = NULL;
 
    TR_X86ScratchRegisterManager *scratchRegisterManager = cg->generateScratchRegisterManager();
-   int displacement = 0;
-   TR::Register *startAddressReg = objectReg;
+   int displacementCorrection = 0;
+   TR::Register *baseAddressReg = objectReg;
+   TR::MemoryReference *dataAddrSlotMR = NULL;
+#ifdef TR_TARGET_64BIT
    if (TR::Compiler->om.isOffHeapAllocationEnabled() && !node->isUnsafeGetPutCASCallOnNonArray())
       {
       // scratchRegisterManager = cg->generateScratchRegisterManager();
-      startAddressReg = scratchRegisterManager->findOrCreateScratchRegister();
+      baseAddressReg = scratchRegisterManager->findOrCreateScratchRegister();
 
       // load address of the first element
-      TR::MemoryReference *dataAddrSlotMR = generateX86MemoryReference(objectReg, fej9->getOffsetOfContiguousDataAddrField(), cg);
-      generateRegMemInstruction(TR::InstOpCode::LRegMem(), node, startAddressReg, dataAddrSlotMR, cg);
+      dataAddrSlotMR = generateX86MemoryReference(objectReg, fej9->getOffsetOfContiguousDataAddrField(), cg);
+      generateRegMemInstruction(TR::InstOpCode::LRegMem(), node, baseAddressReg, dataAddrSlotMR, cg);
 
       // Remove array header size from offset
-      generateX86MemoryReference(startAddressReg, offsetReg, 0, displacement, cg);
-      displacement = -TR::Compiler->om.contiguousArrayHeaderSizeInBytes();
+      displacementCorrection = -TR::Compiler->om.contiguousArrayHeaderSizeInBytes();
       }
+#endif /* TR_TARGET_64BIT */
 
    if (offsetReg)
-      mr = generateX86MemoryReference(startAddressReg, offsetReg, 0, displacement, cg);
+      mr = generateX86MemoryReference(baseAddressReg, offsetReg, 0, displacementCorrection, cg);
    else
-      mr = generateX86MemoryReference(startAddressReg, offset + displacement, cg);
+      mr = generateX86MemoryReference(baseAddressReg, offset + displacementCorrection, cg);
 
 
    bool bumpedRefCount = false;
@@ -9948,8 +9950,9 @@ inlineCompareAndSwapNative(
          cg);
       }
 
-   if (startAddressReg && startAddressReg != objectReg)
-      scratchRegisterManager->reclaimScratchRegister(startAddressReg);
+   if (dataAddrSlotMR)
+      scratchRegisterManager->reclaimScratchRegister(baseAddressReg);
+
    scratchRegisterManager->stopUsingRegisters();
 
    node->setRegister(resultReg);
