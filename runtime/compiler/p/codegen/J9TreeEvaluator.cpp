@@ -8281,11 +8281,9 @@ static TR::Register *VMinlineCompareAndSwap(TR::Node *node, TR::CodeGenerator *c
 
    if (TR::Compiler->om.isOffHeapAllocationEnabled() && !node->isUnsafeGetPutCASCallOnNonArray())
    {
-      //load dataAddr into some register
+      //put dataAddr (address of first element) into some register
       dataAddrReg = srm->findOrCreateScratchRegister();
-
-      TR::MemoryReference *dataAddrSlotMR = TR::MemoryReference::createWithDisplacement(cg, objReg, fej9->getOffsetOfContiguousDataAddrField(), TR::Compiler->om.sizeofReferenceAddress());
-      generateTrg1MemInstruction(cg, TR::InstOpCode::Op_load, node, dataAddrReg, dataAddrSlotMR);
+      generateTrg1Src1ImmInstruction(cg, TR::InstOpCode::addi, node, dataAddrReg, objReg, fej9->getOffsetOfContiguousDataAddrField());
 
       //subtract array header size from offset
       int headerSize = TR::Compiler->om.contiguousArrayHeaderSizeInBytes();
