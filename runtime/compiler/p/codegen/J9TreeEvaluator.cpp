@@ -8288,6 +8288,14 @@ static TR::Register *VMinlineCompareAndSwap(TR::Node *node, TR::CodeGenerator *c
       //subtract array header size from offset
       int headerSize = TR::Compiler->om.contiguousArrayHeaderSizeInBytes();
       generateTrg1Src1ImmInstruction(cg, TR::InstOpCode::addi, node, offsetReg, offsetReg, -headerSize);
+
+      //TEST
+      if (fourthChild->getOpCode().isLoadConst())
+         printf("\n\nJACKIE: initial offset = %d\n\n", isLong ? fourthChild->getLongInt() : oldValue = fourthChild->getInt());
+      else
+         printf("\n\nJACKIE: initial offset is not a constant value\n\n");
+         
+      printf("\n\nJACKIE: header size = %d\n\n", headerSize);
    }
 
    resultReg = genCAS(node, cg, dataAddrReg, offsetReg, oldVReg, newVReg, cndReg, doneLabel, secondChild, oldValue, oldValueInReg, isLong, casWithoutSync);

@@ -9774,6 +9774,14 @@ inlineCompareAndSwapNative(
 
       // Remove array header size from offset
       displacementCorrection = -TR::Compiler->om.contiguousArrayHeaderSizeInBytes();
+
+      //TEST
+      if (offsetChild->getOpCode().isLoadConst())
+         printf("\n\nJACKIE: initial offset = %d\n\n", offsetChild->getLongInt());
+      else
+         printf("\n\nJACKIE: initial offset is not a constant value\n\n");
+         
+      printf("\n\nJACKIE: displacement correction = %d\n\n", displacementCorrection);
       }
 #endif /* TR_TARGET_64BIT */
 
