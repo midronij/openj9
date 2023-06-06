@@ -8287,7 +8287,7 @@ static TR::Register *VMinlineCompareAndSwap(TR::Node *node, TR::CodeGenerator *c
 
       //subtract array header size from offset
       int headerSize = TR::Compiler->om.contiguousArrayHeaderSizeInBytes();
-      generateTrg1Src1ImmInstruction(cg, TR::InstOpCode::addi, node, offsetReg, offsetReg, -headerSize);
+      generateTrg1Src1ImmInstruction(cg, TR::InstOpCode::addi, node, offsetReg, offsetReg, headerSize);
 
       //TEST
       if (fourthChild->getOpCode().isLoadConst())
