@@ -9283,7 +9283,24 @@ static TR::Register* inlineStringHashCode(TR::Node* node, bool isCompressed, TR:
 
    static uint64_t MASKDECOMPRESSED[] = { 0x0000000000000000ULL, 0xffffffffffffffffULL };
    static uint64_t MASKCOMPRESSED[]   = { 0xffffffff00000000ULL, 0x0000000000000000ULL };
-   generateRegMemInstruction(isCompressed ? TR::InstOpCode::MOVDRegMem : TR::InstOpCode::MOVQRegMem, node, hashXMM, generateX86MemoryReference(address, index, shift, -(size << shift) + TR::Compiler->om.contiguousArrayHeaderSizeInBytes(), cg), cg);
+
+   // Use dataAddr field as base address instead of array header if off heap allocation is enabled
+   TR::Register *baseAddressReg = address;
+   TR::MemoryReference *dataAddrSlotMR = NULL;
+   int displacement = TR::Compiler->om.contiguousArrayHeaderSizeInBytes();
+#ifdef TR_TARGET_64BIT
+   if (TR::Compiler->om.isOffHeapAllocationEnabled())
+      {
+      baseAddressReg = cg->allocateRegister();
+      displacement = 0;
+
+      // Load address of the first data element.
+      dataAddrSlotMR = generateX86MemoryReference(address, comp->fej9()->getOffsetOfContiguousDataAddrField(), cg);
+      generateRegMemInstruction(TR::InstOpCode::LRegMem(), node, baseAddressReg, dataAddrSlotMR, cg);
+      }
+#endif /* TR_TARGET_64BIT */
+
+   generateRegMemInstruction(isCompressed ? TR::InstOpCode::MOVDRegMem : TR::InstOpCode::MOVQRegMem, node, hashXMM, generateX86MemoryReference(baseAddressReg, index, shift, -(size << shift) + displacement, cg), cg);
    generateRegMemInstruction(TR::InstOpCode::LEARegMem(), node, tmp, generateX86MemoryReference(cg->findOrCreate16ByteConstant(node, isCompressed ? MASKCOMPRESSED : MASKDECOMPRESSED), cg), cg);
 
    auto mr = generateX86MemoryReference(tmp, index, shift, 0, cg);
@@ -9308,7 +9325,7 @@ static TR::Register* inlineStringHashCode(TR::Node* node, bool isCompressed, TR:
    generateRegMemInstruction(TR::InstOpCode::MOVDQURegMem, node, multiplierXMM, generateX86MemoryReference(cg->findOrCreate16ByteConstant(node, multiplier), cg), cg);
    generateLabelInstruction(TR::InstOpCode::label, node, loopLabel, cg);
    generateRegRegInstruction(TR::InstOpCode::PMULLDRegReg, node, hashXMM, multiplierXMM, cg);
-   generateRegMemInstruction(isCompressed ? TR::InstOpCode::PMOVZXBDRegMem : TR::InstOpCode::PMOVZXWDRegMem, node, tmpXMM, generateX86MemoryReference(address, index, shift, TR::Compiler->om.contiguousArrayHeaderSizeInBytes(), cg), cg);
+   generateRegMemInstruction(isCompressed ? TR::InstOpCode::PMOVZXBDRegMem : TR::InstOpCode::PMOVZXWDRegMem, node, tmpXMM, generateX86MemoryReference(baseAddressReg, index, shift, displacement, cg), cg);
    generateRegImmInstruction(TR::InstOpCode::ADD4RegImms, node, index, 4, cg);
    generateRegRegInstruction(TR::InstOpCode::PADDDRegReg, node, hashXMM, tmpXMM, cg);
    generateRegRegInstruction(TR::InstOpCode::CMP4RegReg, node, index, length, cg);
@@ -9327,6 +9344,9 @@ static TR::Register* inlineStringHashCode(TR::Node* node, bool isCompressed, TR:
    }
 
    generateRegRegInstruction(TR::InstOpCode::MOVDReg4Reg, node, hash, hashXMM, cg);
+
+   if (dataAddrSlotMR)
+      cg->stopUsingRegister(baseAddressReg);
 
    cg->stopUsingRegister(index);
    cg->stopUsingRegister(tmp);
