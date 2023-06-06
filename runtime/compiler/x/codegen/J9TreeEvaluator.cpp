@@ -9288,8 +9288,10 @@ static TR::Register* inlineStringHashCode(TR::Node* node, bool isCompressed, TR:
    TR::Register *baseAddressReg = address;
    TR::MemoryReference *dataAddrSlotMR = NULL;
    int displacement = TR::Compiler->om.contiguousArrayHeaderSizeInBytes();
+
+   static bool *svermaDisableStringHashCodeInlining = NULL != feGetEnv("sverma_TR_DisableStringHashCodeInlining");
 #ifdef TR_TARGET_64BIT
-   if (TR::Compiler->om.isOffHeapAllocationEnabled())
+   if (TR::Compiler->om.isOffHeapAllocationEnabled() && !svermaDisableStringHashCodeInlining)
       {
       baseAddressReg = cg->allocateRegister();
       displacement = 0;
