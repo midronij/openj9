@@ -3754,7 +3754,7 @@ J9::Z::CodeGenerator::inlineDirectCall(
    {
    TR::CodeGenerator *cg = self();
    TR::Compilation *comp = cg->comp();
-   TR_J9VMBase *fej9 = comp->fej9();
+   TR_J9VMBase *fej9 = (TR_J9VMBase *)(comp->fe());
 
    TR::MethodSymbol * methodSymbol = node->getSymbol()->getMethodSymbol();
 
@@ -3794,7 +3794,7 @@ J9::Z::CodeGenerator::inlineDirectCall(
             break;
 
          if (node->isSafeForCGToFastPathUnsafeCall()
-            && (!TR::Compiler->om.canGenerateArraylets() || node->isUnsafeGetPutCASCallOnNonArray()))
+            && ((!TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled()) || node->isUnsafeGetPutCASCallOnNonArray()))
             {
             resultReg = TR::TreeEvaluator::VMinlineCompareAndSwap(node, cg, TR::InstOpCode::CS, IS_NOT_OBJ);
             return true;
@@ -3807,7 +3807,7 @@ J9::Z::CodeGenerator::inlineDirectCall(
 
          if (comp->target().is64Bit()
             && node->isSafeForCGToFastPathUnsafeCall()
-            && (!TR::Compiler->om.canGenerateArraylets() || node->isUnsafeGetPutCASCallOnNonArray()))
+            && ((!TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled()) || node->isUnsafeGetPutCASCallOnNonArray()))
             {
             resultReg = TR::TreeEvaluator::VMinlineCompareAndSwap(node, cg, TR::InstOpCode::CSG, IS_NOT_OBJ);
             return true;
@@ -3821,7 +3821,7 @@ J9::Z::CodeGenerator::inlineDirectCall(
             break;
 
          if (node->isSafeForCGToFastPathUnsafeCall()
-            && (!TR::Compiler->om.canGenerateArraylets() || node->isUnsafeGetPutCASCallOnNonArray()))
+            && ((!TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled()) || node->isUnsafeGetPutCASCallOnNonArray()))
             {
             resultReg = TR::TreeEvaluator::VMinlineCompareAndSwap(node, cg, (comp->useCompressedPointers() ? TR::InstOpCode::CS : TR::InstOpCode::getCmpAndSwapOpCode()), IS_OBJ);
             return true;
