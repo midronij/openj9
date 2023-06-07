@@ -1681,7 +1681,6 @@ TR::Register *
 J9::Z::TreeEvaluator::inlineIntrinsicIndexOf(TR::Node * node, TR::CodeGenerator * cg, bool isLatin1)
    {
    cg->generateDebugCounter("z13/simd/indexOf", 1, TR::DebugCounter::Free);
-   TR::Compilation *comp = cg->comp();
 
    TR::Register* array = cg->evaluate(node->getChild(1));
    TR::Register* ch = cg->evaluate(node->getChild(2));
@@ -1711,24 +1710,7 @@ J9::Z::TreeEvaluator::inlineIntrinsicIndexOf(TR::Node * node, TR::CodeGenerator 
    TR::LabelSymbol* failureLabel = generateLabelSymbol( cg);
    TR::LabelSymbol* cFlowRegionEnd = generateLabelSymbol( cg);
 
-   int displacement = TR::Compiler->om.contiguousArrayHeaderSizeInBytes();
-   TR::MemoryReference *dataAddrSlotMR = NULL;
-   TR::Register *baseAddressReg = array;
-   int regDepPostCondSize = 8;
-#if defined(TR_TARGET_64BIT)
-   if (TR::Compiler->om.isOffHeapAllocationEnabled())
-      {
-      regDepPostCondSize += 1;
-      displacement = 0; // Don't need to add array header size if off heap allocation is enabled
-      baseAddressReg = cg->allocateRegister();
-
-      // Load addresss of the first data element from dataAddr field
-      dataAddrSlotMR = generateS390MemoryReference(array, comp->fej9()->getOffsetOfContiguousDataAddrField(), cg);
-      generateRXInstruction(cg, TR::InstOpCode::getLoadOpCode(), node, baseAddressReg, dataAddrSlotMR);
-      }
-#endif /* defined(TR_TARGET_64BIT) */
-
-   TR::RegisterDependencyConditions* regDeps = new (cg->trHeapMemory()) TR::RegisterDependencyConditions(0, regDepPostCondSize, cg);
+   TR::RegisterDependencyConditions* regDeps = new (cg->trHeapMemory()) TR::RegisterDependencyConditions(0, 8, cg);
    regDeps->addPostCondition(array, TR::RealRegister::AssignAny);
    regDeps->addPostCondition(loopCounter, TR::RealRegister::AssignAny);
    regDeps->addPostCondition(indexRegister, TR::RealRegister::AssignAny);
@@ -1737,7 +1719,6 @@ J9::Z::TreeEvaluator::inlineIntrinsicIndexOf(TR::Node * node, TR::CodeGenerator 
    regDeps->addPostCondition(charBufferVector, TR::RealRegister::AssignAny);
    regDeps->addPostCondition(resultVector, TR::RealRegister::AssignAny);
    regDeps->addPostCondition(valueVector, TR::RealRegister::AssignAny);
-   regDeps->addPostConditionIfNotAlreadyInserted(baseAddressReg, TR::RealRegister::AssignAny);
 
    generateVRRfInstruction(cg, TR::InstOpCode::VLVGP, node, valueVector, offset, ch);
 
@@ -1772,7 +1753,7 @@ J9::Z::TreeEvaluator::inlineIntrinsicIndexOf(TR::Node * node, TR::CodeGenerator 
    // VLL takes an index, not a count, so subtract 1 from the count
    generateRILInstruction(cg, TR::InstOpCode::SLFI, node, loadLength, 1);
 
-   generateRXInstruction(cg, TR::InstOpCode::LA, node, offsetAddress, generateS390MemoryReference(baseAddressReg, indexRegister, displacement, cg));
+   generateRXInstruction(cg, TR::InstOpCode::LA, node, offsetAddress, generateS390MemoryReference(array, indexRegister, TR::Compiler->om.contiguousArrayHeaderSizeInBytes(), cg));
    generateVRSbInstruction(cg, TR::InstOpCode::VLL, node, charBufferVector, loadLength, generateS390MemoryReference(offsetAddress, 0, cg));
 
    generateVRRbInstruction(cg, TR::InstOpCode::VFEE, node, resultVector, charBufferVector, valueVector, 0x1, elementSizeMask);
@@ -1800,7 +1781,7 @@ J9::Z::TreeEvaluator::inlineIntrinsicIndexOf(TR::Node * node, TR::CodeGenerator 
 
    generateS390LabelInstruction(cg, TR::InstOpCode::label, node, loopLabel);
 
-   generateVRXInstruction(cg, TR::InstOpCode::VL, node, charBufferVector, generateS390MemoryReference(baseAddressReg, indexRegister, displacement, cg));
+   generateVRXInstruction(cg, TR::InstOpCode::VL, node, charBufferVector, generateS390MemoryReference(array, indexRegister, TR::Compiler->om.contiguousArrayHeaderSizeInBytes(), cg));
 
    generateVRRbInstruction(cg, TR::InstOpCode::VFEE, node, resultVector, charBufferVector, valueVector, 0x1, elementSizeMask);
    generateS390BranchInstruction(cg, TR::InstOpCode::BRC, TR::InstOpCode::COND_MASK4, node, foundLabel);
@@ -1826,9 +1807,6 @@ J9::Z::TreeEvaluator::inlineIntrinsicIndexOf(TR::Node * node, TR::CodeGenerator 
 
    generateS390LabelInstruction(cg, TR::InstOpCode::label, node, cFlowRegionEnd, regDeps);
    cFlowRegionEnd->setEndInternalControlFlow();
-
-   if (dataAddrSlotMR)
-      cg->stopUsingRegister(baseAddressReg);
 
    cg->stopUsingRegister(loopCounter);
    cg->stopUsingRegister(loadLength);
