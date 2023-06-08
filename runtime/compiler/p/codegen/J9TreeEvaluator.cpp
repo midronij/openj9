@@ -8275,28 +8275,55 @@ static TR::Register *VMinlineCompareAndSwap(TR::Node *node, TR::CodeGenerator *c
          }
       }
 
-   //check if off heap is enabled and if object is of type array
-   TR_PPCScratchRegisterManager *srm = cg->generateScratchRegisterManager();
+   TR_PPCScratchRegisterManager *srm = NULL;
    TR::Register *dataAddrReg = objReg;
 
-   if (TR::Compiler->om.isOffHeapAllocationEnabled() && !node->isUnsafeGetPutCASCallOnNonArray())
+   //check if off heap is enabled
+   if (TR::Compiler->om.isOffHeapAllocationEnabled())
    {
-      //load dataAddr into some register
+      srm = cg->generateScratchRegisterManager();
+
+      TR::Register *arrayCheckFlagReg = srm->findOrCreateScratchRegister();
       dataAddrReg = srm->findOrCreateScratchRegister();
 
+      TR::LabelSymbol *notArray = generateLabelSymbol(cg);
+
+      //get object class info -> put in dataAddrReg to save registers
+      generateLoadJ9Class(node, dataAddrReg, objReg, cg);
+      TR::MemoryReference *objClassMR = TR::MemoryReference::createWithDisplacement(cg, dataAddrReg, offsetof(J9Class, classDepthAndFlags), TR::Compiler->om.sizeofReferenceAddress());
+      generateTrg1MemInstruction(cg, TR::InstOpCode::Op_load, node, dataAddrReg, objClassMR);
+
+      //perform isArray check at runtime
+      loadConstant(cg, node, fej9->getFlagValueForArrayCheck(), arrayCheckFlagReg);
+      generateTrg1Src2Instruction(cg, TR::InstOpCode::AND, node, arrayCheckFlagReg, dataAddrReg, arrayCheckFlagReg);
+      generateTrg1Src1ImmInstruction(cg,TR::InstOpCode::cmpi8, node, cndReg, arrayCheckFlagReg, NULLVALUE);
+
+      //allow arrayCheckFlagReg to be reclaimed since it's no longer needed
+      srm->reclaimScratchRegister(arrayCheckFlagReg);
+
+      //copy objReg into dataAddrReg (in case object is not an array)
+      generateTrg1Src1Instruction(cg, TR::InstOpCode::mr, node, dataAddrReg, objReg);
+
+      //if object is not an array, skip loading dataAddr and correcting offset
+      generateConditionalBranchInstruction(cg, TR::InstOpCode::beq, node, notArray, cndReg);
+
+      //load dataAddr into some register
       TR::MemoryReference *dataAddrSlotMR = TR::MemoryReference::createWithDisplacement(cg, objReg, fej9->getOffsetOfContiguousDataAddrField(), TR::Compiler->om.sizeofReferenceAddress());
       generateTrg1MemInstruction(cg, TR::InstOpCode::Op_load, node, dataAddrReg, dataAddrSlotMR);
 
       //subtract array header size from offset
       int headerSize = TR::Compiler->om.contiguousArrayHeaderSizeInBytes();
       generateTrg1Src1ImmInstruction(cg, TR::InstOpCode::addi, node, offsetReg, offsetReg, -headerSize);
-   }
 
+      //if off heap is enabled but object is not array, skip loading dataAddr and correcting offset
+      generateLabelInstruction(cg, TR::InstOpCode::label, node, notArray);
+   }
+   
    resultReg = genCAS(node, cg, dataAddrReg, offsetReg, oldVReg, newVReg, cndReg, doneLabel, secondChild, oldValue, oldValueInReg, isLong, casWithoutSync);
 
    int numDeps = 6;
-   if (dataAddrReg && dataAddrReg != objReg) 
-      numDeps++;
+   if (srm)
+      numDeps += srm->numAvailableRegisters();
 
    conditions = new (cg->trHeapMemory()) TR::RegisterDependencyConditions(numDeps, numDeps, cg->trMemory());
    TR::addDependency(conditions, objReg, TR::RealRegister::NoReg, TR_GPR, cg);
@@ -8308,12 +8335,12 @@ static TR::Register *VMinlineCompareAndSwap(TR::Node *node, TR::CodeGenerator *c
       TR::addDependency(conditions, oldVReg, TR::RealRegister::NoReg, TR_GPR, cg);
    TR::addDependency(conditions, cndReg, TR::RealRegister::cr0, TR_CCR, cg);
 
-   if (dataAddrReg && dataAddrReg != objReg)
+   if (srm)
       srm->addScratchRegistersToDependencyList(conditions);
 
    generateDepLabelInstruction(cg, TR::InstOpCode::label, node, doneLabel, conditions);
 
-   if (dataAddrReg && dataAddrReg != objReg)
+   if (srm)
       srm->reclaimScratchRegister(dataAddrReg);
    srm->stopUsingRegisters();
    
