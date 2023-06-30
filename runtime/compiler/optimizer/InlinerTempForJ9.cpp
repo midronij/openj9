@@ -875,11 +875,14 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
    TR::TreeTop* nullComparisonTree = nullComparisonBlock->getLastRealTreeTop();
    TR::TreeTop *nullComparisonEntryTree = nullComparisonBlock->getEntry();
    TR::TreeTop *nullComparisonExitTree = nullComparisonBlock->getExit();
-   //if conversionNeeded is true, we haven't generated and we don't need arrayDirectAccessBlock
-   TR::Block *arrayDirectAccessBlock = conversionNeeded ? nullComparisonTree->getNode()->getBranchDestination()->getNode()->getBlock() : NULL;
+   
+   bool arrayBlockNeeded = conversionNeeded || (comp()->fej9()->isOffHeapAllocationEnabled() && javaLangClass == NULL && comp()->target().is64Bit());
+
+   //if arrayBlockNeeded is false, we haven't generated and we don't need arrayDirectAccessBlock
+   TR::Block *arrayDirectAccessBlock = arrayBlockNeeded ? nullComparisonTree->getNode()->getBranchDestination()->getNode()->getBlock() : NULL;
    TR::Block *indirectAccessBlock;
    TR::Block * directAccessBlock;
-   if (conversionNeeded)
+   if (arrayBlockNeeded)
       {
       //Generating block for direct access
       indirectAccessBlock = nullComparisonBlock->getNextBlock();
@@ -907,7 +910,7 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
 
    //Generating block for lowTagCmpTree
    TR::Block *lowTagCmpBlock =
-   TR::Block::createEmptyBlock(unsafeAddress, comp(), conversionNeeded ? indirectAccessBlock->getFrequency() : directAccessBlock->getFrequency());
+   TR::Block::createEmptyBlock(unsafeAddress, comp(), arrayBlockNeeded ? indirectAccessBlock->getFrequency() : directAccessBlock->getFrequency());
    lowTagCmpBlock->append(lowTagCmpTree);
    cfg->addNode(lowTagCmpBlock);
    debugTrace(tracer(), "\t In genCodeForUnsafeGetPut, Block %d created for low tag comparison\n", lowTagCmpBlock->getNumber());
@@ -918,7 +921,7 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
    TR::TreeTop *isClassTreeTop;
    TR::Block *isClassBlock;
    // If we need conversion or java/lang/Class is not loaded yet, we generate old sequence of tests
-   if (conversionNeeded || javaLangClass == NULL)
+   if (arrayBlockNeeded || javaLangClass == NULL)
       {
       TR::Node *isArrayField = NULL;
       if (comp()->target().is32Bit())
@@ -937,11 +940,14 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
       isArrayBlock = TR::Block::createEmptyBlock(vftLoad, comp(), indirectAccessBlock->getFrequency());
       isArrayBlock->append(isArrayTreeTop);
       cfg->addNode(isArrayBlock);
-      isArrayNode->setBranchDestination(conversionNeeded ? arrayDirectAccessBlock->getEntry() : directAccessBlock->getEntry());
-      if (conversionNeeded)
+      isArrayNode->setBranchDestination(arrayBlockNeeded ? arrayDirectAccessBlock->getEntry() : directAccessBlock->getEntry());
+      if (arrayBlockNeeded)
          {
          indirectAccessBlock->getEntry()->insertTreeTopsBeforeMe(lowTagCmpBlock->getEntry(), lowTagCmpBlock->getExit());
          lowTagCmpTree->getNode()->setBranchDestination(directAccessBlock->getEntry());
+
+         if (!conversionNeeded)
+            traceMsg(comp(),"\t\t Generating an isArray test as j9class of java/lang/Class is NULL");
          }
       else
          {
@@ -953,7 +959,7 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
                                                          isArrayBlock->getExit());
       cfg->addEdge(TR::CFGEdge::createEdge(isArrayBlock,  lowTagCmpBlock, trMemory()));
       cfg->addEdge(TR::CFGEdge::createEdge(lowTagCmpBlock, indirectAccessBlock, trMemory()));
-      cfg->addEdge(TR::CFGEdge::createEdge(isArrayBlock, conversionNeeded ? arrayDirectAccessBlock : directAccessBlock, trMemory()));
+      cfg->addEdge(TR::CFGEdge::createEdge(isArrayBlock, arrayBlockNeeded ? arrayDirectAccessBlock : directAccessBlock, trMemory()));
       cfg->addEdge(TR::CFGEdge::createEdge(nullComparisonBlock,  isArrayBlock, trMemory()));
 
       debugTrace(tracer(), "\t In genCodeForUnsafeGetPut, Block %d created for array check\n", isArrayBlock->getNumber());
@@ -1521,11 +1527,27 @@ TR_J9InlinerPolicy::createUnsafeGetWithOffset(TR::ResolvedMethodSymbol *calleeSy
          TR::Node::createWithSymRef(storeOpCode, 1, 1, unsafeCallWithConversion, newTemp);
       }
 
+   // If we are not able to get javaLangClass it is still inefficient to put direct Access far
+   // So in that case we will generate lowTagCmpTest to branch to indirect access if true
+   TR_OpaqueClassBlock *javaLangClass = comp()->fe()->getClassFromSignature("Ljava/lang/Class;",17, comp()->getCurrentMethod(),true);
+   bool needNotLowTagged = javaLangClass != NULL || conversionNeeded ;
+   // If we can get a J9Class or we need conversion we generate test to branch to direct access if low bit is not tagged
+   // Else in case we get NULL instead of j9Class we generate test to branch to indirect access if low bit is tagged
+   TR::TreeTop *lowTagCmpTree = genClassCheckForUnsafeGetPut(offset, needNotLowTagged);
+
    TR::TreeTop* directAccessTreeTop =
       genDirectAccessCodeForUnsafeGetPut(callNodeTreeTop->getNode(), false, true);
-   TR::TreeTop* arrayDirectAccessTreeTop = conversionNeeded
-      ? genDirectAccessCodeForUnsafeGetPut(callNodeWithConversion, conversionNeeded, true)
-      : NULL;
+
+   TR::TreeTop* arrayDirectAccessTreeTop;
+
+   if (conversionNeeded)
+      arrayDirectAccessTreeTop = genDirectAccessCodeForUnsafeGetPut(callNodeWithConversion, conversionNeeded, true);
+   else if (comp()->fej9()->isOffHeapAllocationEnabled() && javaLangClass == NULL)
+      //if conversion not needed but offheap enabled and class unknown, want arrayDirectAccess block to be identical to directAccessBlock
+      arrayDirectAccessTreeTop = genDirectAccessCodeForUnsafeGetPut(callNodeTreeTop->getNode(), false, true);
+   else
+      arrayDirectAccessTreeTop = NULL;
+
    TR::TreeTop* indirectAccessTreeTop =
       genIndirectAccessCodeForUnsafeGetPut(callNodeTreeTop->getNode(), unsafeAddress);
 
@@ -1534,17 +1556,29 @@ TR_J9InlinerPolicy::createUnsafeGetWithOffset(TR::ResolvedMethodSymbol *calleeSy
    //    -change object base address (second child) to dataAddr
    //    -subtract header size from offset (third child)
 
-   // CASE: conversionNeeded == true (e.g.: Unsafe.getShort()), object is array -> in ArrayDirectAccess Block
+   // CASE 1: conversionNeeded == true (e.g.: Unsafe.getShort()), object is array
    //   istore         -> arrayDirectAccessTreeTop->getNode()
    //     s2i          -> conversion
-   //       sloadi     -> conversion
+   //       sloadi
    //         aladd    -> address to access (base address + offset)
    //           aload  -> object base address
    //           lload  -> offset
 
-   if (conversionNeeded && comp()->fej9()->isOffHeapAllocationEnabled())
+   // CASE 2: conversionNeeded == false (e.g.: Unsafe.getLong()), object is array but class is unknown at compile time
+   //   lstore         -> arrayDirectAccessTreeTop->getNode()
+   //     lloadi
+   //       aladd      -> address to access (base address + offset)
+   //         aload    -> object base address
+   //         lload    -> offset
+
+   if (comp()->fej9()->isOffHeapAllocationEnabled() && (conversionNeeded || javaLangClass == NULL))
    {
-      TR::Node *addrToAccessNode = arrayDirectAccessTreeTop->getNode()->getChild(0)->getChild(0)->getChild(0);
+      TR::Node *addrToAccessNode;
+
+      if (conversionNeeded) //CASE 1
+         addrToAccessNode = arrayDirectAccessTreeTop->getNode()->getChild(0)->getChild(0)->getChild(0);
+      else //CASE 2
+         addrToAccessNode = arrayDirectAccessTreeTop->getNode()->getChild(0)->getChild(0);
 
       //change object base address to dataAddr
       TR::Node *objBaseAddrNode = addrToAccessNode->getChild(0);
@@ -1557,14 +1591,6 @@ TR_J9InlinerPolicy::createUnsafeGetWithOffset(TR::ResolvedMethodSymbol *calleeSy
       addrToAccessNode->setChild(1, adjustedOffset);
    }
 #endif /* TR_TARGET_64BIT */
-
-   // If we are not able to get javaLangClass it is still inefficient to put direct Access far
-   // So in that case we will generate lowTagCmpTest to branch to indirect access if true
-   TR_OpaqueClassBlock *javaLangClass = comp()->fe()->getClassFromSignature("Ljava/lang/Class;",17, comp()->getCurrentMethod(),true);
-   bool needNotLowTagged = javaLangClass != NULL || conversionNeeded ;
-   // If we can get a J9Class or we need conversion we generate test to branch to direct access if low bit is not tagged
-   // Else in case we get NULL instead of j9Class we generate test to branch to indirect access if low bit is tagged
-   TR::TreeTop *lowTagCmpTree = genClassCheckForUnsafeGetPut(offset, needNotLowTagged);
 
    TR::Block * joinBlock =
       addNullCheckForUnsafeGetPut(unsafeAddress, newSymbolReferenceForAddress,
