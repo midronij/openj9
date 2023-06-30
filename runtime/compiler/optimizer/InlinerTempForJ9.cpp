@@ -1528,6 +1528,36 @@ TR_J9InlinerPolicy::createUnsafeGetWithOffset(TR::ResolvedMethodSymbol *calleeSy
       : NULL;
    TR::TreeTop* indirectAccessTreeTop =
       genIndirectAccessCodeForUnsafeGetPut(callNodeTreeTop->getNode(), unsafeAddress);
+
+#if defined(TR_TARGET_64BIT)
+   //adjust arguments if object is array and offheap is being used:
+   //    -change object base address (second child) to dataAddr
+   //    -subtract header size from offset (third child)
+
+   // CASE: conversionNeeded == true (e.g.: Unsafe.getShort()), object is array -> in ArrayDirectAccess Block
+   //   istore         -> arrayDirectAccessTreeTop->getNode()
+   //     s2i          -> conversion
+   //       sloadi     -> conversion
+   //         aladd    -> address to access (base address + offset)
+   //           aload  -> object base address
+   //           lload  -> offset
+
+   if (conversionNeeded && comp()->fej9()->isOffHeapAllocationEnabled())
+   {
+      TR::Node *addrToAccessNode = arrayDirectAccessTreeTop->getNode()->getChild(0)->getChild(0)->getChild(0);
+
+      //change object base address to dataAddr
+      TR::Node *objBaseAddrNode = addrToAccessNode->getChild(0);
+      TR::Node *dataAddrNode = TR::TransformUtil::generateDataAddrLoadTrees(comp(), objBaseAddrNode);
+      addrToAccessNode->setChild(0, dataAddrNode);
+
+      //subtract header size from offset
+      TR::Node *oldOffset = addrToAccessNode->getChild(1);
+      TR::Node *adjustedOffset = TR::Node::create(TR::ladd, 2, oldOffset, TR::Node::lconst(-TR::Compiler->om.contiguousArrayHeaderSizeInBytes()));
+      addrToAccessNode->setChild(1, adjustedOffset);
+   }
+#endif /* TR_TARGET_64BIT */
+
    // If we are not able to get javaLangClass it is still inefficient to put direct Access far
    // So in that case we will generate lowTagCmpTest to branch to indirect access if true
    TR_OpaqueClassBlock *javaLangClass = comp()->fe()->getClassFromSignature("Ljava/lang/Class;",17, comp()->getCurrentMethod(),true);
