@@ -1195,6 +1195,11 @@ TR_J9InlinerPolicy::createUnsafePutWithOffset(TR::ResolvedMethodSymbol *calleeSy
       comp()->getDebug()->print(comp()->getOutFile(), oldCallNodeTreeTop);
       }
 
+   TR_OpaqueClassBlock *javaLangClass = comp()->getClassClassPointer(/* isVettedForAOT = */ true);
+   // If we are not able to get javaLangClass it is still inefficient to put direct Access far
+   // So in that case we will generate lowTagCmpTest to branch to indirect access if true
+   bool needNotLowTagged = javaLangClass != NULL  || conversionNeeded ;
+   TR::TreeTop *lowTagCmpTree = genClassCheckForUnsafeGetPut(offset, needNotLowTagged);
 
    TR::TreeTop* directAccessTreeTop = genDirectAccessCodeForUnsafeGetPut(unsafeNode, false, false);
 
@@ -1204,9 +1209,15 @@ TR_J9InlinerPolicy::createUnsafePutWithOffset(TR::ResolvedMethodSymbol *calleeSy
       comp()->getDebug()->print(comp()->getOutFile(), directAccessTreeTop);
       }
 
-   TR::TreeTop* arrayDirectAccessTreeTop = conversionNeeded
-      ? genDirectAccessCodeForUnsafeGetPut(unsafeNodeWithConversion, conversionNeeded, false)
-      : NULL;
+   TR::TreeTop* arrayDirectAccessTreeTop;
+   
+   if (conversionNeeded)
+      arrayDirectAccessTreeTop = genDirectAccessCodeForUnsafeGetPut(unsafeNodeWithConversion, conversionNeeded, false);
+   else if (comp()->fej9()->isOffHeapAllocationEnabled() && javaLangClass == NULL && comp()->target().is64Bit())
+      //if conversion not needed but offheap enabled and class unknown, want arrayDirectAccess block to be identical to directAccessBlock
+      arrayDirectAccessTreeTop = genDirectAccessCodeForUnsafeGetPut(unsafeNode, false, false);
+   else
+      arrayDirectAccessTreeTop = NULL;
 
    if (tracer()->debugLevel() && conversionNeeded)
       {
@@ -1228,17 +1239,48 @@ TR_J9InlinerPolicy::createUnsafePutWithOffset(TR::ResolvedMethodSymbol *calleeSy
       indirectAccessTreeTop->getNode()->setIsUnsafeStaticWrtBar(true);
       }
 
-   TR_OpaqueClassBlock *javaLangClass = comp()->getClassClassPointer(/* isVettedForAOT = */ true);
-   // If we are not able to get javaLangClass it is still inefficient to put direct Access far
-   // So in that case we will generate lowTagCmpTest to branch to indirect access if true
-   bool needNotLowTagged = javaLangClass != NULL  || conversionNeeded ;
-   TR::TreeTop *lowTagCmpTree = genClassCheckForUnsafeGetPut(offset, needNotLowTagged);
-
    if (tracer()->debugLevel())
       {
       debugTrace(tracer(), "\t After genClassCheckForUnsafeGetPut, lowTagCmpTree dump:\n");
       comp()->getDebug()->print(comp()->getOutFile(), lowTagCmpTree);
       }
+
+#if defined(TR_TARGET_64BIT)
+   //adjust arguments if object is array and offheap is being used:
+   //    -change object base address (second child) to dataAddr
+   //    -subtract header size from offset (third child)
+
+   // CASE 1: conversionNeeded == true (e.g.: Unsafe.putShort()), object is array
+   //   sstorei        -> arrayDirectAccessTreeTop->getNode()
+   //     aladd        -> address to access (base address + offset)
+   //       aload      -> object base address
+   //       lload      -> offset
+   //     i2s          -> conversion
+   //       iload      -> value to put
+
+   // CASE 2: conversionNeeded == false (e.g.: Unsafe.putLong()), object is array but class is unknown at compile time
+   //   sstorei        -> arrayDirectAccessTreeTop->getNode()
+   //     aladd        -> address to access (base address + offset)
+   //       aload      -> object base address
+   //       lload      -> offset
+   //     iload        -> value to put
+
+   if (comp()->fej9()->isOffHeapAllocationEnabled() && (conversionNeeded || javaLangClass == NULL))
+   {
+      TR::Node *addrToAccessNode;
+      addrToAccessNode = arrayDirectAccessTreeTop->getNode()->getChild(0);
+
+      //change object base address to dataAddr
+      TR::Node *objBaseAddrNode = addrToAccessNode->getChild(0);
+      TR::Node *dataAddrNode = TR::TransformUtil::generateDataAddrLoadTrees(comp(), objBaseAddrNode);
+      addrToAccessNode->setChild(0, dataAddrNode);
+
+      //subtract header size from offset
+      TR::Node *oldOffset = addrToAccessNode->getChild(1);
+      TR::Node *adjustedOffset = TR::Node::create(TR::ladd, 2, oldOffset, TR::Node::lconst(-TR::Compiler->om.contiguousArrayHeaderSizeInBytes()));
+      addrToAccessNode->setChild(1, adjustedOffset);
+   }
+#endif /* TR_TARGET_64BIT */
 
    TR::Block * joinBlock =
       addNullCheckForUnsafeGetPut(unsafeAddress, newSymbolReferenceForAddress,
@@ -1542,7 +1584,7 @@ TR_J9InlinerPolicy::createUnsafeGetWithOffset(TR::ResolvedMethodSymbol *calleeSy
 
    if (conversionNeeded)
       arrayDirectAccessTreeTop = genDirectAccessCodeForUnsafeGetPut(callNodeWithConversion, conversionNeeded, true);
-   else if (comp()->fej9()->isOffHeapAllocationEnabled() && javaLangClass == NULL)
+   else if (comp()->fej9()->isOffHeapAllocationEnabled() && javaLangClass == NULL && comp()->target().is64Bit())
       //if conversion not needed but offheap enabled and class unknown, want arrayDirectAccess block to be identical to directAccessBlock
       arrayDirectAccessTreeTop = genDirectAccessCodeForUnsafeGetPut(callNodeTreeTop->getNode(), false, true);
    else
