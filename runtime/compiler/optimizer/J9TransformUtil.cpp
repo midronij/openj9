@@ -757,12 +757,7 @@ static void *dereferenceStructPointerChain(void *baseStruct, TR::Node *baseNode,
             else if (comp->getSymRefTab()->isImmutableArrayShadow(symRef) ||
                      isBaseStableArray)
                {
-               TR::Node* offsetNode = NULL;
-               if (curNode->getFirstChild()->getFirstChild()->isDataAddrPointer())
-                  offsetNode = curNode->getFirstChild()->getSecondChild();
-               else
-                  offsetNode = curNode->getFirstChild()->getSecondChild();
-
+               TR::Node* offsetNode = curNode->getFirstChild()->getSecondChild();
                if (!offsetNode->getOpCode().isLoadConst())
                   return NULL;
 
@@ -773,8 +768,13 @@ static void *dereferenceStructPointerChain(void *baseStruct, TR::Node *baseNode,
                   offset = offsetNode->getUnsignedInt();
 
                uint64_t arrayLengthInBytes = TR::Compiler->om.getArrayLengthInBytes(comp, curStruct);
-               int64_t minOffset = TR::Compiler->om.contiguousArrayHeaderSizeInBytes();
-               int64_t maxOffset = arrayLengthInBytes + TR::Compiler->om.contiguousArrayHeaderSizeInBytes();
+               int64_t minOffset = 0;
+               int64_t maxOffset = arrayLengthInBytes;
+               if (!TR::Compiler->om.isOffHeapAllocationEnabled())
+                  {
+                  minOffset += TR::Compiler->om.contiguousArrayHeaderSizeInBytes();
+                  maxOffset += TR::Compiler->om.contiguousArrayHeaderSizeInBytes();
+                  }
 
                // Check array bound
                if (offset < minOffset ||
