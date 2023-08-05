@@ -106,7 +106,24 @@ public:
          TR::Compilation *comp,
          TR::Node *object);
 
-   static bool transformDirectLoad(TR::Compilation *, TR::Node *node);
+#if defined(J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION)
+   static TR::Node *generateDataAddrLoadTrees(TR::Compilation *comp, TR::Node *arrayObject);
+#endif /* J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION */
+   static TR::Node *generateArrayAddressTrees(
+      TR::Compilation *comp,
+      TR::Node *arrayNode,
+      TR::Node *offsetNode = NULL);
+
+   static TR::Node *generateArrayStartTrees(TR::Compilation *comp, TR::Node *arrayObject);
+
+   static TR::Node *generateArrayOffsetTrees(
+      TR::Compilation *comp,
+      TR::Node *indexNode,
+      TR::Node *strideNode = NULL,
+      int32_t elementSize = 0,
+      bool useShiftOpCode = false);
+
+   static bool transformDirectLoad(TR::Compilation *comp, TR::Node *node);
 
    /**
     * \brief
