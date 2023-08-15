@@ -876,7 +876,7 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
    TR::TreeTop *nullComparisonEntryTree = nullComparisonBlock->getEntry();
    TR::TreeTop *nullComparisonExitTree = nullComparisonBlock->getExit();
    
-   bool arrayBlockNeeded = conversionNeeded || (comp()->fej9()->isOffHeapAllocationEnabled() && javaLangClass == NULL && comp()->target().is64Bit());
+   bool arrayBlockNeeded = conversionNeeded || (comp()->fej9()->isOffHeapAllocationEnabled() && comp()->target().is64Bit());
 
    //if arrayBlockNeeded is false, we haven't generated and we don't need arrayDirectAccessBlock
    TR::Block *arrayDirectAccessBlock = arrayBlockNeeded ? nullComparisonTree->getNode()->getBranchDestination()->getNode()->getBlock() : NULL;
@@ -1213,8 +1213,8 @@ TR_J9InlinerPolicy::createUnsafePutWithOffset(TR::ResolvedMethodSymbol *calleeSy
    
    if (conversionNeeded)
       arrayDirectAccessTreeTop = genDirectAccessCodeForUnsafeGetPut(unsafeNodeWithConversion, conversionNeeded, false);
-   else if (comp()->fej9()->isOffHeapAllocationEnabled() && javaLangClass == NULL && comp()->target().is64Bit())
-      //if conversion not needed but offheap enabled and class unknown, want arrayDirectAccess block to be identical to directAccessBlock
+   else if (comp()->fej9()->isOffHeapAllocationEnabled() && comp()->target().is64Bit())
+      //if conversion not needed but offheap enabled, want arrayDirectAccess block to be identical to directAccessBlock
       arrayDirectAccessTreeTop = genDirectAccessCodeForUnsafeGetPut(unsafeNode, false, false);
    else
       arrayDirectAccessTreeTop = NULL;
@@ -1265,7 +1265,7 @@ TR_J9InlinerPolicy::createUnsafePutWithOffset(TR::ResolvedMethodSymbol *calleeSy
    //       lload      -> offset
    //     iload        -> value to put
 
-   if (comp()->fej9()->isOffHeapAllocationEnabled() && (conversionNeeded || javaLangClass == NULL))
+   if (comp()->fej9()->isOffHeapAllocationEnabled())
    {
       TR::Node *addrToAccessNode;
       addrToAccessNode = arrayDirectAccessTreeTop->getNode()->getChild(0);
@@ -1660,8 +1660,8 @@ TR_J9InlinerPolicy::createUnsafeGetWithOffset(TR::ResolvedMethodSymbol *calleeSy
 
    if (conversionNeeded)
       arrayDirectAccessTreeTop = genDirectAccessCodeForUnsafeGetPut(callNodeWithConversion, conversionNeeded, true);
-   else if (comp()->fej9()->isOffHeapAllocationEnabled() && javaLangClass == NULL && comp()->target().is64Bit())
-      //if conversion not needed but offheap enabled and class unknown, want arrayDirectAccess block to be identical to directAccessBlock
+   else if (comp()->fej9()->isOffHeapAllocationEnabled() && comp()->target().is64Bit())
+      //if conversion not needed but offheap enabled, want arrayDirectAccess block to be identical to directAccessBlock
       arrayDirectAccessTreeTop = genDirectAccessCodeForUnsafeGetPut(callNodeTreeTop->getNode(), false, true);
    else
       arrayDirectAccessTreeTop = NULL;
@@ -1689,7 +1689,7 @@ TR_J9InlinerPolicy::createUnsafeGetWithOffset(TR::ResolvedMethodSymbol *calleeSy
    //         aload    -> object base address
    //         lload    -> offset
 
-   if (comp()->fej9()->isOffHeapAllocationEnabled() && (conversionNeeded || javaLangClass == NULL))
+   if (comp()->fej9()->isOffHeapAllocationEnabled())
    {
       TR::Node *addrToAccessNode;
 
