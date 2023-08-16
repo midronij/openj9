@@ -690,7 +690,7 @@ J9::ObjectModel::getAddressOfElement(TR::Compilation* comp, uintptr_t objectPoin
    uintptr_t base = objectPointer;
    if (!TR::Compiler->om.isDiscontiguousArray(comp, objectPointer))
       {
-#if defined(J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION)
+#if defined(TR_TARGET_64BIT)
       if (TR::Compiler->om.isOffHeapAllocationEnabled())
          {
          /* If off heap allocation is enabled the data portion of
@@ -702,7 +702,7 @@ J9::ObjectModel::getAddressOfElement(TR::Compilation* comp, uintptr_t objectPoin
          base = *(uintptr_t *)(objectPointer + TR::Compiler->om.offsetOfContiguousDataAddrField());
          }
       else
-#endif /* J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION */
+#endif /* TR_TARGET_64BIT */
          {
          totalOffset = offset + static_cast<int64_t>(TR::Compiler->om.contiguousArrayHeaderSizeInBytes());
          }
@@ -822,11 +822,11 @@ J9::ObjectModel::isIndexableDataAddrPresent()
       return vmInfo->_isIndexableDataAddrPresent;
       }
 #endif /* defined(J9VM_OPT_JITSERVER) */
-#if defined(J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION)
+#if defined(J9VM_ENV_DATA64)
    return FALSE != TR::Compiler->javaVM->isIndexableDataAddrPresent;
 #else
    return false;
-#endif /* defined(J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION) */
+#endif /* defined(J9VM_ENV_DATA64) */
    }
 
 MM_GCReadBarrierType
