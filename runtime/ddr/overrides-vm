@@ -34,6 +34,9 @@ opaquetype=j9objectclass_t
 opaquetype=j9objectmonitor_t
 opaquetype=UDATA
 
+# Rename constants in J9BuildFlags as required for backwards compatibility.
+fieldoverride.J9BuildFlags.J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION=gc_enableSparseHeapAllocation
+
 # Type overrides - mostly adding data to SRPs.
 typeoverride.J9AnnotationInfo.defaultValues=J9SRP(J9AnnotationInfoEntry)
 typeoverride.J9AnnotationInfo.firstAnnotation=J9SRP(J9AnnotationInfoEntry)
