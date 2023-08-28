@@ -899,8 +899,10 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
    // access code is on the taken path of the branch, so it needs to branch if the
    // bit is set.
    //
+   bool branchIfLowTagged = arrayCheckNeeded ? conversionNeeded /* CASE (1) */ : !conversionNeeded /* CASE (2) */;
+
    TR::TreeTop *lowTagCmpTree = checksNeeded ? // CASES (1) and (2)
-      genClassCheckForUnsafeGetPut(unsafeOffset, /* branchIfLowTagged */ !conversionNeeded) : NULL;
+      genClassCheckForUnsafeGetPut(unsafeOffset, branchIfLowTagged) : NULL;
 
    TR::TreeTop *firstComparisonTree;
    TR::TreeTop *branchTargetTree;
@@ -916,7 +918,7 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
       {
       firstComparisonTree = nullComparisonTree;
       branchTargetTree = arrayDirectAccessTreeTop;
-      fallThroughTree = indirectAccessTreeTop;
+      fallThroughTree = directAccessTreeTop;
       }
    else if (checksNeeded && !arrayBlockNeeded) // CASE (2)
       {
@@ -962,27 +964,26 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
 
    if (arrayCheckNeeded && arrayBlockNeeded) // CASE (1)
       {
-      indirectAccessBlock = beforeCallBlock->getNextBlock();
+      directAccessBlock = beforeCallBlock->getNextBlock();
 
-      //Generating block for direct access
-      directAccessBlock = TR::Block::createEmptyBlock(lowTagCmpTree->getNode(), comp(),
-                                                      indirectAccessBlock->getFrequency());
-      directAccessBlock->append(directAccessTreeTop);
-      directAccessBlock->append(
+      //Generating block for indirect access
+      indirectAccessBlock = TR::Block::createEmptyBlock(lowTagCmpTree->getNode(), comp(),
+                                                        directAccessBlock->getFrequency());
+      indirectAccessBlock->append(indirectAccessTreeTop);
+      indirectAccessBlock->append(
             TR::TreeTop::create(comp(),
-                                TR::Node::create(directAccessTreeTop->getNode(),
+                                TR::Node::create(indirectAccessTreeTop->getNode(),
                                                  TR::Goto, 0, joinBlock->getEntry())));
 
       arrayDirectAccessBlock = firstComparisonTree->getNode()->getBranchDestination()->getNode()->getBlock();
-      arrayDirectAccessBlock->getExit()->insertTreeTopsAfterMe(directAccessBlock->getEntry(),
-                                                               directAccessBlock->getExit());
+      arrayDirectAccessBlock->getExit()->insertTreeTopsAfterMe(indirectAccessBlock->getEntry(),
+                                                               indirectAccessBlock->getExit());
 
-      cfg->addNode(directAccessBlock);
-      cfg->addEdge(TR::CFGEdge::createEdge(directAccessBlock, joinBlock, trMemory()));
+      cfg->addNode(indirectAccessBlock);
+      cfg->addEdge(TR::CFGEdge::createEdge(indirectAccessBlock, joinBlock, trMemory()));
 
       //fix NULLCHK so that directAccessBlock is executed if object is NULL
       nullComparisonTree->getNode()->setBranchDestination(directAccessBlock->getEntry());
-      cfg->addEdge(TR::CFGEdge::createEdge(nullComparisonBlock, directAccessBlock, trMemory()));
       }
    else if (checksNeeded && !arrayBlockNeeded) // CASE (2)
       {
@@ -1050,18 +1051,11 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
       isArrayBlock = TR::Block::createEmptyBlock(vftLoad, comp(), indirectAccessBlock->getFrequency());
       isArrayBlock->append(isArrayTreeTop);
       cfg->addNode(isArrayBlock);
-      isArrayNode->setBranchDestination(arrayBlockNeeded ? arrayDirectAccessBlock->getEntry() : directAccessBlock->getEntry());
-      if (arrayBlockNeeded)
-         {
-         indirectAccessBlock->getEntry()->insertTreeTopsBeforeMe(lowTagCmpBlock->getEntry(), lowTagCmpBlock->getExit());
-         lowTagCmpTree->getNode()->setBranchDestination(directAccessBlock->getEntry());
-         }
-      else
-         {
-         traceMsg(comp(),"\t\t Generating an isArray test as j9class of java/lang/Class is NULL");
-         directAccessBlock->getEntry()->insertTreeTopsBeforeMe(lowTagCmpBlock->getEntry(), lowTagCmpBlock->getExit());
-         lowTagCmpTree->getNode()->setBranchDestination(indirectAccessBlock->getEntry());
-         }
+      isArrayNode->setBranchDestination(arrayDirectAccessBlock->getEntry());
+      
+      directAccessBlock->getEntry()->insertTreeTopsBeforeMe(lowTagCmpBlock->getEntry(), lowTagCmpBlock->getExit());
+      lowTagCmpTree->getNode()->setBranchDestination(indirectAccessBlock->getEntry());
+
       lowTagCmpBlock->getEntry()->insertTreeTopsBeforeMe(isArrayBlock->getEntry(),
                                                          isArrayBlock->getExit());
       cfg->addEdge(TR::CFGEdge::createEdge(isArrayBlock, lowTagCmpBlock, trMemory()));
