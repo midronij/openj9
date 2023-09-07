@@ -879,8 +879,9 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
 
    //if arrayBlockNeeded is false, we haven't generated and we don't need arrayDirectAccessBlock
    TR::Block *arrayDirectAccessBlock = arrayBlockNeeded ? nullComparisonTree->getNode()->getBranchDestination()->getNode()->getBlock() : NULL;
-   TR::Block *indirectAccessBlock;
    TR::Block * directAccessBlock;
+   TR::Block *indirectAccessBlock;
+   
    if (arrayCheckNeeded && arrayBlockNeeded)
       {
       //Generating block for direct access
@@ -895,6 +896,22 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
       directAccessBlock->getExit());
       cfg->addNode(directAccessBlock);
       cfg->addEdge(TR::CFGEdge::createEdge(directAccessBlock,  joinBlock, trMemory()));
+      }
+   else if (!arrayCheckNeeded && arrayBlockNeeded)
+      {
+      // In this case, it is known that the object is an array at compile time. Thus, the lowtag/class checks and the additional 
+      // access blocks are unecessary. We will only add directAccessBlock to the IL trees, (which, when offheap array allocation is 
+      // active, will have the modified object arguments)
+      directAccessBlock = nullComparisonBlock->getNextBlock();
+      indirectAccessBlock = nullComparisonTree->getNode()->getBranchDestination()->getNode()->getBlock();
+      nullComparisonTree->getNode()->setBranchDestination(directAccessBlock->getEntry());
+
+      //remove indirectAccessBlock
+      TR::TreeTop *indirectPrevTree = indirectAccessBlock->getEntry()->getPrevTreeTop();
+      TR::TreeTop *indirectNextTree = indirectAccessBlock->getExit()->getNextTreeTop();
+
+      indirectPrevTree->setNextTreeTop(indirectNextTree);
+      indirectNextTree->setPrevTreeTop(indirectPrevTree);
       }
    else
       {
@@ -911,12 +928,16 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
 
    debugTrace(tracer(), "\t In genCodeForUnsafeGetPut, Block %d created for direct Access\n", directAccessBlock->getNumber());
 
-   //Generating block for lowTagCmpTree
-   TR::Block *lowTagCmpBlock =
-   TR::Block::createEmptyBlock(unsafeAddress, comp(), arrayBlockNeeded ? indirectAccessBlock->getFrequency() : directAccessBlock->getFrequency());
-   lowTagCmpBlock->append(lowTagCmpTree);
-   cfg->addNode(lowTagCmpBlock);
-   debugTrace(tracer(), "\t In genCodeForUnsafeGetPut, Block %d created for low tag comparison\n", lowTagCmpBlock->getNumber());
+   //Generating block for lowTagCmpTree only if object is not known to be array at compile time
+   TR::Block *lowTagCmpBlock = NULL;
+
+   if (arrayCheckNeeded || !arrayBlockNeeded)
+      {
+      lowTagCmpBlock = TR::Block::createEmptyBlock(unsafeAddress, comp(), arrayBlockNeeded ? indirectAccessBlock->getFrequency() : directAccessBlock->getFrequency());
+      lowTagCmpBlock->append(lowTagCmpTree);
+      cfg->addNode(lowTagCmpBlock);
+      debugTrace(tracer(), "\t In genCodeForUnsafeGetPut, Block %d created for low tag comparison\n", lowTagCmpBlock->getNumber());
+      }
 
    TR::Node *vftLoad = TR::Node::createWithSymRef(TR::aloadi, 1, 1, TR::Node::createWithSymRef(unsafeAddress, comp()->il.opCodeForDirectLoad(unsafeAddress->getDataType()), 0, newSymbolReferenceForAddress), comp()->getSymRefTab()->findOrCreateVftSymbolRef());
    TR::TreeTop *isArrayTreeTop;
@@ -1004,7 +1025,8 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
 
       debugTrace(tracer(), "\t In genCodeForUnsafeGetPut, Block %d created for array check\n", isArrayBlock->getNumber());
       }
-   else
+   //Generating isClass test only if object is not known to be array at compile time
+   else if (!arrayBlockNeeded)
       {
       // Following sequence of code generate isClassTest.
       // ifacmpeq goto indirectAccess
@@ -1038,7 +1060,10 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
 
       debugTrace(tracer(), "\t In genCodeForUnsafeGetPut, Block %d created for isClass Test\n", isClassBlock->getNumber());
       }
-   cfg->addEdge(TR::CFGEdge::createEdge(lowTagCmpBlock,  directAccessBlock, trMemory()));
+
+   if (lowTagCmpBlock != NULL)
+      cfg->addEdge(TR::CFGEdge::createEdge(lowTagCmpBlock,  directAccessBlock, trMemory()));
+
    //Generating treetop and block for array check
    cfg->removeEdge(nullComparisonBlock, indirectAccessBlock);
    if (needNullCheck)
