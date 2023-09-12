@@ -11636,9 +11636,10 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
             TR::Node *destOffset = node->getChild(2);
             TR::Node *len = node->getChild(3);
             TR::Node *byteValue = node->getChild(4);
-            dest = TR::Node::create(TR::aladd, 2, dest, destOffset);
+            //dest = TR::Node::create(TR::aladd, 2, dest, destOffset);
 
-            TR::Node * copyMemNode = TR::Node::createWithSymRef(TR::arrayset, 3, 3, dest, len, byteValue, node->getSymbolReference());
+            //TR::Node * copyMemNode = TR::Node::createWithSymRef(TR::arrayset, 3, 3, dest, len, byteValue, node->getSymbolReference());
+            TR::Node *copyMemNode = TR::Node::createWithSymRef(TR::arrayset, 4, 4, dest, destOffset, len, byteValue, node->getSymbolReference());
             copyMemNode->setByteCodeInfo(node->getByteCodeInfo());
 
             TR::TreeEvaluator::setmemoryEvaluator(copyMemNode,cg);
