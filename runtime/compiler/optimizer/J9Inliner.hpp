@@ -310,12 +310,12 @@ class TR_J9InlinerPolicy : public OMR_InlinerPolicy
        * \param isUnsafeGet A \bool value indicating whether the call represents an
        *           \c Unsafe.get* operation &mdash; \c true &mdash; or an
        *           \c Unsafe.put* operation &mdash; \c false.
-       * \param conversionNeeded Indicates whether the call reprents an \c Unsafe
+       * \param conversionNeeded Indicates whether the call represents an \c Unsafe
        *           method call involving any of Java \c char, \c short, \c byte or
        *           \c boolean.
        * \param arrayCheckNeeded Indicates whether an array check needs to be generated
        *           for the type of the \c Object
-       * \param arrayBlockNeeded Indicates whether a separate access block needs to be 
+       * \param arrayBlockNeeded Indicates whether a separate access block needs to be
        *           generated to handle the case where the \c Object is an array
        * \param checksNeeded Indicates whether any type checks for \c Object need to
        *           be generated (i.e.: if the type of the \c Object is unknown)
