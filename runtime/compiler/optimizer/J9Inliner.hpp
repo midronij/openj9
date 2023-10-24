@@ -315,7 +315,7 @@ class TR_J9InlinerPolicy : public OMR_InlinerPolicy
        *           \c boolean.
        * \param arrayCheckNeeded Indicates whether an array check needs to be generated
        *           for the type of the \c Object
-       * \param arrayBlockNeeded Indicates whether a separate access block needs to be 
+       * \param arrayBlockNeeded Indicates whether a separate access block needs to be
        *           generated to handle the case where the \c Object is an array
        * \param checksNeeded Indicates whether any type checks for \c Object need to
        *           be generated (i.e.: if the type of the \c Object is unknown)
