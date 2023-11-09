@@ -726,7 +726,7 @@ int32_t TR_UnsafeFastPath::perform()
          // Skip inlining of helpers for arraylets if unsafe for arraylets is disabled
          static char * disableUnsafeForArraylets = feGetEnv("TR_DisableUnsafeForArraylets");
 
-         if (mightBeArraylets && disableUnsafeForArraylets && TR::Compiler->om.isOffHeapAllocationEnabled())
+         if (mightBeArraylets && disableUnsafeForArraylets)
             {
             if (trace())
                traceMsg(comp(), "unsafeForArraylets is disabled, skip unsafeFastPath for node [" POINTER_PRINTF_FORMAT "]\n", node);
