@@ -1221,7 +1221,7 @@ TR_J9InlinerPolicy::createUnsafePutWithOffset(TR::ResolvedMethodSymbol *calleeSy
 
    bool checksNeeded, arrayCheckNeeded, arrayBlockNeeded;
 
-   if (unsafeCall->getChild(1) != NULL)
+   if (unsafeCall->getChild(1) != NULL && unsafeCall->getChild(1)->getSymbolReference() != NULL)
    {
       int length;
       const char *objTypeSig = unsafeCall->getChild(1)->getSymbolReference()->getTypeSignature(length);
@@ -1797,7 +1797,7 @@ TR_J9InlinerPolicy::createUnsafeGetWithOffset(TR::ResolvedMethodSymbol *calleeSy
 
    bool checksNeeded, arrayCheckNeeded, arrayBlockNeeded;
 
-   if (unsafeAddress != NULL)
+   if (unsafeAddress != NULL && unsafeAddress->getSymbolReference() != NULL)
    {
       int length;
       const char *objTypeSig = unsafeAddress->getSymbolReference()->getTypeSignature(length);
