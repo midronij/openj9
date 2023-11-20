@@ -944,8 +944,8 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
       TR::TreeTop *indirectPrevTree = indirectAccessBlock->getEntry()->getPrevTreeTop();
       TR::TreeTop *indirectNextTree = indirectAccessBlock->getExit()->getNextTreeTop();
 
-      indirectPrevTree->setNextTreeTop(indirectNextTree);
-      indirectNextTree->setPrevTreeTop(indirectPrevTree);
+      if (indirectPrevTree != NULL) indirectPrevTree->setNextTreeTop(indirectNextTree);
+      if (indirectNextTree != NULL) indirectNextTree->setPrevTreeTop(indirectPrevTree);
       }
 
    debugTrace(tracer(), "\t In genCodeForUnsafeGetPut, Block %d created for direct Access\n", directAccessBlock->getNumber());
