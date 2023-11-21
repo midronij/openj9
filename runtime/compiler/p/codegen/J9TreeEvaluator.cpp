@@ -62,6 +62,7 @@
 #include "infra/Annotations.hpp"
 #include "infra/ILWalk.hpp"
 #include "infra/Bit.hpp"
+#include "optimizer/J9TransformUtil.hpp"
 #include "optimizer/VectorAPIExpansion.hpp"
 #include "p/codegen/ForceRecompilationSnippet.hpp"
 #include "p/codegen/GenerateInstructions.hpp"
@@ -11684,12 +11685,12 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
             }
             else
             {
+            #if defined (J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION)
+
                if (adjustmentNeeded) // CASE (2)
                {
                   //load dataAddr and use as object base address (previously dest)
-                  TR::SymbolReference *dataAddrFieldOffset = comp->getSymRefTab()->findOrCreateContiguousArrayDataAddrFieldShadowSymRef();
-                  TR::Node *dataAddrNode = TR::Node::createWithSymRef(TR::aloadi, 1, dest, 0, dataAddrFieldOffset);
-                  dataAddrNode->setIsInternalPointer(true);
+                  TR::Node *dataAddrNode = TR::TransformUtil::generateDataAddrLoadTrees(comp(), dest);
                   dest = dataAddrNode;
 
                   //subtract head size from offset
@@ -11710,6 +11711,8 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
 
                dest = TR::Node::create(TR::aladd, 2, dest, destOffset);
                copyMemNode = TR::Node::createWithSymRef(TR::arrayset, 3, 3, dest, len, byteValue, node->getSymbolReference());
+
+            #endif /* J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION */
             }
 
             copyMemNode->setByteCodeInfo(node->getByteCodeInfo());
