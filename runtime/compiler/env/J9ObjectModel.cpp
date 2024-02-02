@@ -79,7 +79,8 @@ J9::ObjectModel::initialize()
    result = mmf->j9gc_modron_getConfigurationValueForKey(vm,
                                                          j9gc_modron_configuration_discontiguousArraylets,
                                                          &value);
-   if (result == 1 && value == 1)
+   bool isOffHeapAllocationEnabled = mmf->j9gc_off_heap_allocation_enabled(vm);
+   if (result == 1 && value == 1 && !isOffHeapAllocationEnabled)
       {
       _usesDiscontiguousArraylets = true;
       _arrayLetLeafSize = (int32_t)(vm->memoryManagerFunctions->j9gc_arraylet_getLeafSize(vm));
@@ -405,15 +406,19 @@ J9::ObjectModel::maxContiguousArraySizeInBytes()
 bool
 J9::ObjectModel::isDiscontiguousArray(int32_t sizeInBytes)
    {
-   if (sizeInBytes > TR::Compiler->om.maxContiguousArraySizeInBytes())
+   /* When off heap allocation is enabled both large and small arrays are
+    * treated as contiguous. Only different among the two is that large
+    * arrays are contiguous off heap and small arrays are contiguous on
+    * heap. Hence, in addition to array size we must check if off heap
+    * allocation is enabled.
+    */
+   J9JavaVM *vm = TR::Compiler->javaVM;
+   if ((!TR::Compiler->om.isOffHeapAllocationEnabled()
+         && sizeInBytes > TR::Compiler->om.maxContiguousArraySizeInBytes())
+      || (TR::Compiler->om.useHybridArraylets() && sizeInBytes == 0))
       return true;
-   else
-      {
-      if (TR::Compiler->om.useHybridArraylets() && sizeInBytes == 0)
-         return true;
-      else
-         return false;
-      }
+
+   return false;
    }
 
 
@@ -425,15 +430,18 @@ J9::ObjectModel::isDiscontiguousArray(int32_t sizeInElements, int32_t elementSiz
    int32_t shift = trailingZeroes(elementSize);
    int32_t maxContiguousArraySizeInElements = TR::Compiler->om.maxContiguousArraySizeInBytes() >> shift;
 
-   if (sizeInElements > maxContiguousArraySizeInElements)
+   /* When off heap allocation is enabled both large and small arrays are
+    * treated as contiguous. Only different among the two is that large
+    * arrays are contiguous off heap and small arrays are contiguous on
+    * heap. Hence, in addition to array size we must check if off heap
+    * allocation is enabled.
+    */
+   if ((!TR::Compiler->om.isOffHeapAllocationEnabled()
+         && sizeInElements > maxContiguousArraySizeInElements)
+      || (TR::Compiler->om.useHybridArraylets() && sizeInElements == 0))
       return true;
-   else
-      {
-      if (TR::Compiler->om.useHybridArraylets() && sizeInElements == 0)
-         return true;
-      else
-         return false;
-      }
+
+   return false;
    }
 
 
@@ -677,9 +685,20 @@ J9::ObjectModel::getAddressOfElement(TR::Compilation* comp, uintptr_t objectPoin
    TR_ASSERT(offset >= TR::Compiler->om.contiguousArrayHeaderSizeInBytes() &&
              offset < TR::Compiler->om.getArrayLengthInBytes(comp, objectPointer) + TR::Compiler->om.contiguousArrayHeaderSizeInBytes(), "Array is out of bound");
 
+   uintptr_t basePointer = objectPointer;
+   int64_t totalOffset = offset;
    // If the array is contiguous, return the addition of objectPointer and offset
    if (!TR::Compiler->om.isDiscontiguousArray(comp, objectPointer))
-      return objectPointer + offset;
+      {
+#if defined(J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION)
+      if (TR::Compiler->om.isOffHeapAllocationEnabled())
+         {
+         basePointer = *(uintptr_t *)(objectPointer + TR::Compiler->om.offsetOfContiguousDataAddrField());
+         totalOffset = offset - static_cast<int32_t>(TR::Compiler->om.contiguousArrayHeaderSizeInBytes());
+	 }
+#endif /* J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION */
+      return basePointer + totalOffset;
+      }
 
    // The following code handles discontiguous array
    //

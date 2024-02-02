@@ -6600,7 +6600,7 @@ TR::Register *J9::Power::TreeEvaluator::VMnewEvaluator(TR::Node *node, TR::CodeG
             genInitArrayHeader(node, iCursor, isVariableLen, clazz, NULL, resReg, zeroReg, condReg, enumReg, dataSizeReg,
                   tmp5Reg, tmp4Reg, conditions, needZeroInit, cg);
 
-#ifdef TR_TARGET_64BIT
+#ifdef J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION
          if (TR::Compiler->om.isIndexableDataAddrPresent())
             {
             /* Here we'll update dataAddr slot for both fixed and variable length arrays. Fixed length arrays are
@@ -6670,7 +6670,7 @@ TR::Register *J9::Power::TreeEvaluator::VMnewEvaluator(TR::Node *node, TR::CodeG
             // store the first data element address to dataAddr slot
             iCursor = generateMemSrc1Instruction(cg, TR::InstOpCode::std, node, dataAddrSlotMR, firstDataElementReg, iCursor);
             }
-#endif /* TR_TARGET_64BIT */
+#endif /* J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION */
          if (generateArraylets)
             {
             //write arraylet pointer to object header
@@ -10536,6 +10536,7 @@ static TR::Register *inlineStringHashcode(TR::Node *node, TR::CodeGenerator *cg)
     TR::LabelSymbol *POSTVSXLabel = generateLabelSymbol(cg);
     TR::LabelSymbol *endLabel = generateLabelSymbol(cg);
 
+    // TODO: hdrSize can be replaced by dataAddr load
     // Skip header of the array
     // v = v + offset<<1
     // end = v + count<<1
@@ -10998,6 +10999,7 @@ static TR::Register *inlineIntrinsicIndexOf(TR::Node *node, TR::CodeGenerator *c
    auto vectorCompareOp = isLatin1 ? TR::InstOpCode::vcmpequb_r : TR::InstOpCode::vcmpequh_r;
    auto scalarLoadOp = isLatin1 ? TR::InstOpCode::lbzx : TR::InstOpCode::lhzx;
 
+   // TODO: replace use of array + header size with load of dataAddr field
    TR::Register *array = cg->evaluate(node->getChild(1));
    TR::Register *ch = cg->evaluate(node->getChild(2));
    TR::Register *offset = cg->evaluate(node->getChild(3));
@@ -11752,9 +11754,13 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
          return true;
 
       case TR::java_lang_String_hashCodeImplDecompressed:
-         if (!TR::Compiler->om.canGenerateArraylets() && comp->target().cpu.isAtLeast(OMR_PROCESSOR_PPC_P8) && comp->target().cpu.supportsFeature(OMR_FEATURE_PPC_HAS_VSX) && !comp->compileRelocatableCode()
+         if (!TR::Compiler->om.canGenerateArraylets()
+             && !TR::Compiler->om.isOffHeapAllocationEnabled()
+             && comp->target().cpu.isAtLeast(OMR_PROCESSOR_PPC_P8)
+             && comp->target().cpu.supportsFeature(OMR_FEATURE_PPC_HAS_VSX)
+             && !comp->compileRelocatableCode()
 #ifdef J9VM_OPT_JITSERVER
-               && !comp->isOutOfProcessCompilation()
+             && !comp->isOutOfProcessCompilation()
 #endif
             )
             {
@@ -11786,13 +11792,15 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
          break;
 
       case TR::sun_misc_Unsafe_compareAndSwapInt_jlObjectJII_Z:
-        // In Java9 this can be either the jdk.internal JNI method or the sun.misc Java wrapper.
-        // In Java8 it will be sun.misc which will contain the JNI directly.
-        // We only want to inline the JNI methods, so add an explicit test for isNative().
-        if (!methodSymbol->isNative())
-           break;
+         // In Java9 this can be either the jdk.internal JNI method or the sun.misc Java wrapper.
+         // In Java8 it will be sun.misc which will contain the JNI directly.
+         // We only want to inline the JNI methods, so add an explicit test for isNative().
+         if (!methodSymbol->isNative())
+            break;
 
-        if ((node->isUnsafeGetPutCASCallOnNonArray() || !TR::Compiler->om.canGenerateArraylets()) && node->isSafeForCGToFastPathUnsafeCall())
+         // When dealing with array object; don't inline if arraylets or off heap is enabled
+         if (node->isSafeForCGToFastPathUnsafeCall()
+            && (node->isUnsafeGetPutCASCallOnNonArray() || (!TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled())))
             {
             resultReg = VMinlineCompareAndSwap(node, cg, false);
             return true;
@@ -11806,14 +11814,11 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
          if (!methodSymbol->isNative())
             break;
 
-         if (comp->target().is64Bit() && (node->isUnsafeGetPutCASCallOnNonArray() || !TR::Compiler->om.canGenerateArraylets()) && node->isSafeForCGToFastPathUnsafeCall())
+         // When dealing with array object; don't inline if arraylets or off heap is enabled
+         if (node->isSafeForCGToFastPathUnsafeCall()
+            && (node->isUnsafeGetPutCASCallOnNonArray() || (!TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled())))
             {
-            resultReg = VMinlineCompareAndSwap(node, cg, true);
-            return true;
-            }
-         else if ((node->isUnsafeGetPutCASCallOnNonArray() || !TR::Compiler->om.canGenerateArraylets()) && node->isSafeForCGToFastPathUnsafeCall())
-            {
-            resultReg = inlineAtomicOperation(node, cg, methodSymbol);
+            resultReg = comp->target().is64Bit() ? VMinlineCompareAndSwap(node, cg, true) : inlineAtomicOperation(node, cg, methodSymbol);
             return true;
             }
          break;
@@ -11823,7 +11828,9 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
          if (!methodSymbol->isNative())
             break;
 
-         if ((node->isUnsafeGetPutCASCallOnNonArray() || !TR::Compiler->om.canGenerateArraylets()) && node->isSafeForCGToFastPathUnsafeCall())
+         // When dealing with array object; don't inline if arraylets or off heap is enabled
+         if (node->isSafeForCGToFastPathUnsafeCall()
+            && (node->isUnsafeGetPutCASCallOnNonArray() || (!TR::Compiler->om.canGenerateArraylets() && !TR::Compiler->om.isOffHeapAllocationEnabled())))
             {
             resultReg = VMinlineCompareAndSwapObject(node, cg);
             return true;
