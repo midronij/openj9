@@ -11690,7 +11690,7 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
                if (adjustmentNeeded) // CASE (2)
                {
                   //load dataAddr and use as object base address (previously dest)
-                  TR::Node *dataAddrNode = J9::TransformUtil::generateDataAddrLoadTrees(comp(), dest);
+                  TR::Node *dataAddrNode = J9::TransformUtil::generateDataAddrLoadTrees(comp, dest);
                   dest = dataAddrNode;
 
                   //subtract head size from offset
