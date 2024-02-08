@@ -11664,17 +11664,27 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
             // the type of the object at dest, so all of the above cases will be treated like case (1).
 
             //check dstBaseAddrNode type at compile time
-            int length;
-            const char *objTypeSig = dest->getSymbolReference()->getTypeSignature(length);
-            int objSigLength = strlen("Ljava/lang/Object;");
+            bool arrayCheckNeeded, adjustmentNeeded;
 
-            //generate arrayCHK in case (3) only
-            bool arrayCheckNeeded = TR::Compiler->om.isOffHeapAllocationEnabled() && comp->target().is64Bit() &&
-                                    (objTypeSig == NULL || strncmp(objTypeSig, "Ljava/lang/Object;", objSigLength) == 0);
+            if (dest != NULL && dest->getSymbolReference() != NULL)
+            {
+               int length;
+               const char *objTypeSig = dest->getSymbolReference()->getTypeSignature(length);
+               int objSigLength = strlen("Ljava/lang/Object;");
 
-            //adjust dstBaseAddr and dstOffset in cases (2) and (3)
-            bool adjustmentNeeded = arrayCheckNeeded ||
-                                    TR::Compiler->om.isOffHeapAllocationEnabled() && comp->target().is64Bit() && objTypeSig[0] == '[';
+               //generate arrayCHK in case (3) only
+               arrayCheckNeeded = TR::Compiler->om.isOffHeapAllocationEnabled() && comp->target().is64Bit() &&
+                                 (objTypeSig == NULL || strncmp(objTypeSig, "Ljava/lang/Object;", objSigLength) == 0);
+
+               //adjust dstBaseAddr and dstOffset in cases (2) and (3)
+               adjustmentNeeded = arrayCheckNeeded ||
+                                 TR::Compiler->om.isOffHeapAllocationEnabled() && comp->target().is64Bit() && objTypeSig[0] == '[';
+            }
+            else
+            {
+               arrayCheckNeeded = false;
+               adjustmentNeeded = false;
+            }
 
             TR::Node *copyMemNode;
 
