@@ -3320,6 +3320,13 @@ setIndexableObjectHeaderSizeWithDataAddress(J9JavaVM* vm)
 		vm->contiguousIndexableHeaderSize = sizeof(J9IndexableObjectWithDataAddressContiguousFull);
 		vm->discontiguousIndexableHeaderSize = sizeof(J9IndexableObjectWithDataAddressDiscontiguousFull);
 	}
+	//TODO remove comments
+	//if (MM_GCExtensions::getExtensions(vm)->isVirtualLargeObjectHeapEnabled) {
+		vm->unsafeIndexableHeaderSize = 0;
+	//} else {
+	//	vm->unsafeIndexableHeaderSize = vm->contiguousIndexableHeaderSize;
+	//}
+
 }
 #endif /* defined(J9VM_ENV_DATA64) */
 
@@ -3333,6 +3340,12 @@ setIndexableObjectHeaderSizeWithoutDataAddress(J9JavaVM* vm)
 		vm->contiguousIndexableHeaderSize = sizeof(J9IndexableObjectContiguousFull);
 		vm->discontiguousIndexableHeaderSize = sizeof(J9IndexableObjectDiscontiguousFull);
 	}
+	//TODO remove comments
+	//if (MM_GCExtensions::getExtensions(vm)->isVirtualLargeObjectHeapEnabled) {
+		vm->unsafeIndexableHeaderSize = 0;
+	//} else {
+	//	vm->unsafeIndexableHeaderSize = vm->contiguousIndexableHeaderSize;
+	//}
 }
 
 #if defined(OMR_GC_CONCURRENT_SCAVENGER)
