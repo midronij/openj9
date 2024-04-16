@@ -1143,6 +1143,17 @@ void
 setCRIUSingleThreadModeJVMCRIUException(J9VMThread *vmThread, U_32 moduleName, U_32 messageNumber);
 #endif /* defined(J9VM_OPT_CRIU_SUPPORT) */
 
+/**
+ * Triggers a VM assertion
+ *
+ * @param currentThread vmthread token
+ * @param message the assertion message
+ *
+ * @return void
+ */
+void
+triggerAssertion(J9VMThread *currentThread, const char* message);
+
 /* ---------------- extendedMessageNPE.cpp ---------------- */
 
 /**

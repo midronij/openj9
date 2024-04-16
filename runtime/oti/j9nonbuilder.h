@@ -5169,6 +5169,7 @@ typedef struct J9InternalVMFunctions {
 #if defined(J9VM_ZOS_3164_INTEROPERABILITY) && (JAVA_SPEC_VERSION >= 17)
 	I_32 (*invoke31BitJNI_OnXLoad)(struct J9JavaVM *vm, void *handle, jboolean isOnLoad, void *reserved);
 #endif /* defined(J9VM_ZOS_3164_INTEROPERABILITY) && (JAVA_SPEC_VERSION >= 17) */
+	void (*triggerAssertion)(struct J9VMThread *currentThread, const char* message);
 } J9InternalVMFunctions;
 
 /* Jazz 99339: define a new structure to replace JavaVM so as to pass J9NativeLibrary to JVMTIEnv  */
@@ -5413,6 +5414,7 @@ typedef struct J9VMThread {
 	void* gcExtensions;
 	UDATA contiguousIndexableHeaderSize;
 	UDATA discontiguousIndexableHeaderSize;
+	UDATA unsafeIndexableHeaderSize;
 #if defined(J9VM_ENV_DATA64)
 	UDATA isIndexableDataAddrPresent;
 #endif /* defined(J9VM_ENV_DATA64) */
@@ -5590,6 +5592,7 @@ typedef struct J9VMThread {
 #define J9VMTHREAD_OBJECT_HEADER_SIZE(vmThread) (J9VMTHREAD_COMPRESS_OBJECT_REFERENCES(vmThread) ? sizeof(J9ObjectCompressed) : sizeof(J9ObjectFull))
 #define J9VMTHREAD_CONTIGUOUS_INDEXABLE_HEADER_SIZE(vmThread) ((vmThread)->contiguousIndexableHeaderSize)
 #define J9VMTHREAD_DISCONTIGUOUS_INDEXABLE_HEADER_SIZE(vmThread) ((vmThread)->discontiguousIndexableHeaderSize)
+#define J9VMTHREAD_UNSAFE_INDEXABLE_HEADER_SIZE(vmThread) ((vmThread)->unsafeIndexableHeaderSize)
 
 typedef struct J9ReflectFunctionTable {
 	jobject  ( *idToReflectMethod)(struct J9VMThread* vmThread, jmethodID methodID) ;
@@ -5950,6 +5953,7 @@ typedef struct J9JavaVM {
 	UDATA arrayletLeafLogSize;
 	UDATA contiguousIndexableHeaderSize;
 	UDATA discontiguousIndexableHeaderSize;
+	UDATA unsafeIndexableHeaderSize;
 #if defined(J9VM_ENV_DATA64)
 	UDATA isIndexableDataAddrPresent;
 	BOOLEAN isIndexableDualHeaderShapeEnabled;

@@ -3323,6 +3323,12 @@ setIndexableObjectHeaderSizeWithDataAddress(J9JavaVM* vm)
 		vm->contiguousIndexableHeaderSize = sizeof(J9IndexableObjectWithDataAddressContiguousFull);
 		vm->discontiguousIndexableHeaderSize = sizeof(J9IndexableObjectWithDataAddressDiscontiguousFull);
 	}
+
+	if (MM_GCExtensions::getExtensions(vm)->isVirtualLargeObjectHeapEnabled) {
+		vm->unsafeIndexableHeaderSize = 0;
+	} else {
+		vm->unsafeIndexableHeaderSize = vm->contiguousIndexableHeaderSize;
+	}
 }
 #endif /* defined(J9VM_ENV_DATA64) */
 
@@ -3335,6 +3341,12 @@ setIndexableObjectHeaderSizeWithoutDataAddress(J9JavaVM* vm)
 	} else {
 		vm->contiguousIndexableHeaderSize = sizeof(J9IndexableObjectContiguousFull);
 		vm->discontiguousIndexableHeaderSize = sizeof(J9IndexableObjectDiscontiguousFull);
+	}
+
+	if (MM_GCExtensions::getExtensions(vm)->isVirtualLargeObjectHeapEnabled) {
+		vm->unsafeIndexableHeaderSize = 0;
+	} else {
+		vm->unsafeIndexableHeaderSize = vm->contiguousIndexableHeaderSize;
 	}
 }
 
