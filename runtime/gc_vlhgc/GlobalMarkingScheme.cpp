@@ -1374,7 +1374,7 @@ private:
 		MM_EnvironmentVLHGC::getEnvironment(_env)->_markVLHGCStats._offHeapRegionCandidates += 1;
 		if (!_markingScheme->isMarked(objectPtr)) {
 			MM_EnvironmentVLHGC::getEnvironment(_env)->_markVLHGCStats._offHeapRegionsCleared += 1;
-			OMRPORT_ACCESS_FROM_OMRVM(_omrVM);
+			OMRPORT_ACCESS_FROM_OMRVM(_javaVM->omrVM);
 			omrvmem_release_double_mapped_region(identifier->address, identifier->size, identifier);
 		}
     }

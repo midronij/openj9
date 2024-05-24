@@ -4084,7 +4084,7 @@ private:
 			if (NULL == objectPtr) {
 				Assert_MM_mustBeClass(_extensions->objectModel.getPreservedClass(&forwardedHeader));
 				env->_copyForwardStats._offHeapRegionsCleared += 1;
-				OMRPORT_ACCESS_FROM_OMRVM(_omrVM);
+				OMRPORT_ACCESS_FROM_OMRVM(_javaVM->omrVM);
 				omrvmem_release_double_mapped_region(identifier->address, identifier->size, identifier);
 			}
 		}
