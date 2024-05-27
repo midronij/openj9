@@ -903,12 +903,15 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
    TR::Block * directAccessBlock;
    TR::Block *indirectAccessBlock;
 
-   // There are 5 possible cases determining which blocks should be added to the generated IL trees
+   // There are 4 possible cases determining which blocks should be added to the generated IL trees
    // 1.) checksNeeded && arrayCheckNeeded && arrayBlockNeeded: add directAccess, indirectAccess, and arrayDirectAccess
-   // 2.) checksNeeded && arrayCheckNeeded && !arrayBlockNeeded: add directAccess and indirectAccess only
-   // 3.) checksNeeded && !arrayCheckNeeded && !arrayBlockNeeded: add directAccess and indirectAccess only
-   // 4.) !checksNeeded && !arrayCheckNeeded && arrayBlockNeeded: add directAccess and arrayDirectAccess only
-   // 5.) !checksNeeded && !arrayCheckNeeded && !arrayBlockNeeded: add directAccess only
+   //     (i.e.: (offheap AND object type is unknown at compile time) OR conversionNeeded)
+   // 2.) checksNeeded && !arrayCheckNeeded && !arrayBlockNeeded: add directAccess and indirectAccess only
+   //     (i.e.: gencon AND object type is unknown at compile time AND !conversionNeeded)
+   // 3.) !checksNeeded && !arrayCheckNeeded && arrayBlockNeeded: add directAccess and arrayDirectAccess only
+   //     (i.e.: offheap AND object is known to be array at compile time)
+   // 4.) !checksNeeded && !arrayCheckNeeded && !arrayBlockNeeded: add directAccess only
+   //     (i.e.: (offheap AND object is known to be non-array object at compile) time OR gencon)
 
    if (arrayCheckNeeded && arrayBlockNeeded) // CASE (1)
       {
@@ -929,7 +932,7 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
       nullComparisonTree->getNode()->setBranchDestination(directAccessBlock->getEntry());
       cfg->addEdge(TR::CFGEdge::createEdge(nullComparisonBlock, directAccessBlock, trMemory()));
       }
-   else if (checksNeeded && !arrayBlockNeeded) // CASES (2) and (3)
+   else if (checksNeeded && !arrayBlockNeeded) // CASES (2)
       {
       directAccessBlock = nullComparisonBlock->getNextBlock();
       indirectAccessBlock = nullComparisonTree->getNode()->getBranchDestination()->getNode()->getBlock();
@@ -937,12 +940,12 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
       indirectAccessBlock->setIsCold();
       nullComparisonTree->getNode()->setBranchDestination(directAccessBlock->getEntry());
       }
-   else if (!checksNeeded && arrayBlockNeeded) // CASE (4)
+   else if (!checksNeeded && arrayBlockNeeded) // CASE (3)
       {
       directAccessBlock = nullComparisonTree->getNode()->getBranchDestination()->getNode()->getBlock();
       arrayDirectAccessBlock = nullComparisonBlock->getNextBlock();
       }
-   else // CASE (5)
+   else // CASE (4)
       {
       directAccessBlock = nullComparisonBlock->getNextBlock();
       indirectAccessBlock = nullComparisonTree->getNode()->getBranchDestination()->getNode()->getBlock();
@@ -1265,18 +1268,18 @@ TR_J9InlinerPolicy::createUnsafePutWithOffset(TR::ResolvedMethodSymbol *calleeSy
       // 2.) Object is known at compile time to be a java/lang/Class object (to match JNI implementation)
       checksNeeded = (objTypeSig == NULL) || (strncmp(objTypeSig, "Ljava/lang/Object;", objSigLength) == 0) || (strncmp(objTypeSig, "Ljava/lang/Class;", classSigLength) == 0);
 
-      // We need to generate IL for the array check if we have determined that IL type checks are needed (i.e.: checksNeeded == true) AND
-      // at least one of the following conditions holds:
-      // - conversionNeeded == true
-      // - javaLangClass == NULL
-      // - offheap is enabled
-      arrayCheckNeeded = checksNeeded && (conversionNeeded || javaLangClass == NULL || (TR::Compiler->om.isOffHeapAllocationEnabled() && comp()->target().is64Bit()));
-
       // We need to generate arrayDirectAccessBlock if at least one of the following conditions holds:
       // - conversionNeeded == true AND checksNeeded == true
       // - offheap is enabled AND (object is known be an array at compile time OR object type is unknown at compile time)
       arrayBlockNeeded = (checksNeeded && conversionNeeded) || (TR::Compiler->om.isOffHeapAllocationEnabled() && comp()->target().is64Bit() &&
                                                                (objTypeSig == NULL || strncmp(objTypeSig, "Ljava/lang/Object;", objSigLength) == 0 || objTypeSig[0] == '['));
+
+      // We need to generate IL for the array check if we have determined that IL type checks are needed (i.e.: checksNeeded == true) AND
+      // a separate block is needed to handle array access (i.e.: arrayBlockNeeded == true) AND at least one of the following conditions holds:
+      // - conversionNeeded == true
+      // - javaLangClass == NULL
+      // - offheap is enabled
+      arrayCheckNeeded = checksNeeded && arrayBlockNeeded && (conversionNeeded || javaLangClass == NULL || (TR::Compiler->om.isOffHeapAllocationEnabled() && comp()->target().is64Bit()));
    }
    else // if object is NULL, we want to treat it the same way as we would a non-array, non-class, non-java/lang/Object object (i.e.: use direct access)
    {
@@ -1811,18 +1814,18 @@ TR_J9InlinerPolicy::createUnsafeGetWithOffset(TR::ResolvedMethodSymbol *calleeSy
       // 2.) Object is known at compile time to be a java/lang/Class object (to match JNI implementation)
       checksNeeded = (objTypeSig == NULL) || (strncmp(objTypeSig, "Ljava/lang/Object;", objSigLength) == 0) || (strncmp(objTypeSig, "Ljava/lang/Class;", classSigLength) == 0);
 
-      // We need to generate IL for the array check if we have determined that IL type checks are needed (i.e.: checksNeeded == true) AND
-      // at least one of the following conditions holds:
-      // - conversionNeeded == true
-      // - javaLangClass == NULL
-      // - offheap is enabled
-      arrayCheckNeeded = checksNeeded && (conversionNeeded || javaLangClass == NULL || (TR::Compiler->om.isOffHeapAllocationEnabled() && comp()->target().is64Bit()));
-
       // We need to generate arrayDirectAccessBlock if at least one of the following conditions holds:
       // - conversionNeeded == true AND checksNeeded == true
       // - offheap is enabled AND (object is known be an array at compile time OR object type is unknown at compile time)
       arrayBlockNeeded = (checksNeeded && conversionNeeded) || (TR::Compiler->om.isOffHeapAllocationEnabled() && comp()->target().is64Bit() &&
                                                                (objTypeSig == NULL || strncmp(objTypeSig, "Ljava/lang/Object;", objSigLength) == 0 || objTypeSig[0] == '['));
+
+      // We need to generate IL for the array check if we have determined that IL type checks are needed (i.e.: checksNeeded == true) AND
+      // a separate block is needed to handle array access (i.e.: arrayBlockNeeded == true) AND at least one of the following conditions holds:
+      // - conversionNeeded == true
+      // - javaLangClass == NULL
+      // - offheap is enabled
+      arrayCheckNeeded = checksNeeded && arrayBlockNeeded && (conversionNeeded || javaLangClass == NULL || (TR::Compiler->om.isOffHeapAllocationEnabled() && comp()->target().is64Bit()));
    }
    else // if object is NULL, we want to treat it the same way as we would a non-array, non-class, non-java/lang/Object object (i.e.: use direct access)
    {
