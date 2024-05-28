@@ -3324,17 +3324,11 @@ setIndexableObjectHeaderSizeWithDataAddress(J9JavaVM* vm)
 		vm->discontiguousIndexableHeaderSize = sizeof(J9IndexableObjectWithDataAddressDiscontiguousFull);
 	}
 	//TODO remove comments
-	/*if (MM_GCExtensions::getExtensions(vm)->isVirtualLargeObjectHeapEnabled) {
+	if (MM_GCExtensions::getExtensions(vm)->isVirtualLargeObjectHeapEnabled) {
 		vm->unsafeIndexableHeaderSize = 0;
 	} else {
 		vm->unsafeIndexableHeaderSize = vm->contiguousIndexableHeaderSize;
-	}*/
-#if defined(J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION)
-	vm->unsafeIndexableHeaderSize = 0;
-#else
-	vm->unsafeIndexableHeaderSize = vm->contiguousIndexableHeaderSize;
-#endif
-
+	}
 }
 #endif /* defined(J9VM_ENV_DATA64) */
 
@@ -3349,16 +3343,11 @@ setIndexableObjectHeaderSizeWithoutDataAddress(J9JavaVM* vm)
 		vm->discontiguousIndexableHeaderSize = sizeof(J9IndexableObjectDiscontiguousFull);
 	}
 	//TODO remove comments
-	/*if (MM_GCExtensions::getExtensions(vm)->isVirtualLargeObjectHeapEnabled) {
+	if (MM_GCExtensions::getExtensions(vm)->isVirtualLargeObjectHeapEnabled) {
 		vm->unsafeIndexableHeaderSize = 0;
 	} else {
 		vm->unsafeIndexableHeaderSize = vm->contiguousIndexableHeaderSize;
-	}*/
-#if defined(J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION)
-	vm->unsafeIndexableHeaderSize = 0;
-#else
-	vm->unsafeIndexableHeaderSize = vm->contiguousIndexableHeaderSize;
-#endif
+	}
 }
 
 #if defined(OMR_GC_CONCURRENT_SCAVENGER)
