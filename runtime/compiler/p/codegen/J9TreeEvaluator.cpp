@@ -11655,6 +11655,8 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
       case TR::sun_misc_Unsafe_setMemory:
          if (comp->canTransformUnsafeSetMemory())
             {
+            J9JavaVM *vm = fej9->getJ9JITConfig()->javaVM;
+
             TR::Node *dest = node->getChild(1);
             TR::Node *destOffset = node->getChild(2);
             TR::Node *len = node->getChild(3);
@@ -11714,6 +11716,21 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
                   //load dataAddr and use as object base address (previously dest)
                   TR::Node *dataAddrNode = J9::TransformUtil::generateDataAddrLoadTrees(comp, dest);
                   dest = dataAddrNode;
+
+                  //subtract header size from offset
+                  TR::Node *adjustedOffset;
+
+                  if (destOffset->getOpCode().isLoadConst())
+                  {
+                     int64_t adjustedOffsetConst = destOffset->getConstValue() - vm->unsafeIndexableHeaderSize;
+                     adjustedOffset = TR::Node::create(TR::lconst, adjustedOffsetConst);
+                  }
+                  else
+                  {
+                     adjustedOffset = TR::Node::create(TR::ladd, 2, destOffset, TR::Node::lconst(-vm->unsafeIndexableHeaderSize));
+                  }
+
+                  destOffset = adjustedOffset;
                }
 
             #endif /* J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION */
@@ -11723,7 +11740,7 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
             }
 
             copyMemNode->setByteCodeInfo(node->getByteCodeInfo());
-            TR::TreeEvaluator::setmemoryEvaluator(copyMemNode, cg, arrayCheckNeeded);
+            TR::TreeEvaluator::setmemoryEvaluator(copyMemNode, cg, arrayCheckNeeded, vm->unsafeIndexableHeaderSize);
 
             if (node->getChild(0)->getRegister())
                cg->decReferenceCount(node->getChild(0));
