@@ -1438,6 +1438,23 @@ TR_J9InlinerPolicy::createUnsafePutWithOffset(TR::ResolvedMethodSymbol *calleeSy
       TR::Node *dataAddrNode = TR::TransformUtil::generateDataAddrLoadTrees(comp(), objBaseAddrNode);
       addrToAccessNode->setChild(0, dataAddrNode);
       objBaseAddrNode->decReferenceCount(); //correct refcount
+
+      //TESTING PURPOSES ONLY
+      //subtract header size from offset
+      J9JavaVM *vm = comp()->fej9()->getJ9JITConfig()->javaVM;
+
+      TR::Node *oldOffset = addrToAccessNode->getChild(1);
+
+      if (oldOffset->getOpCode().isLoadConst())
+      {
+         int64_t adjustedOffsetConst = oldOffset->getConstValue() - vm->unsafeIndexableHeaderSize;
+         oldOffset->setConstValue(adjustedOffsetConst);
+      }
+      else
+      {
+         TR::Node *adjustedOffset = TR::Node::create(TR::ladd, 2, oldOffset, TR::Node::lconst(-vm->unsafeIndexableHeaderSize));
+         addrToAccessNode->setChild(1, adjustedOffset);
+      }
    }
 #endif /* J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION */
    
@@ -1646,6 +1663,23 @@ TR_J9InlinerPolicy::createUnsafeCASCallDiamond( TR::TreeTop *callNodeTreeTop, TR
       TR::Node *dataAddrNode = TR::TransformUtil::generateDataAddrLoadTrees(comp(), objBaseAddrNode);
       CASicallNode->setChild(1, dataAddrNode);
       objBaseAddrNode->decReferenceCount(); //correct refcount
+
+      //TESTING PURPOSES ONLY
+      //subtract header size from offset
+      J9JavaVM *vm = comp()->fej9()->getJ9JITConfig()->javaVM;
+
+      TR::Node *oldOffset = CASicallNode->getChild(2);
+
+      if (oldOffset->getOpCode().isLoadConst())
+      {
+         int64_t adjustedOffsetConst = oldOffset->getConstValue() - vm->unsafeIndexableHeaderSize;
+         oldOffset->setConstValue(adjustedOffsetConst);
+      }
+      else
+      {
+         TR::Node *adjustedOffset = TR::Node::create(TR::ladd, 2, oldOffset, TR::Node::lconst(-vm->unsafeIndexableHeaderSize));
+         CASicallNode->setChild(2, adjustedOffset);
+      }
 
       CASicallNode->setIsSafeForCGToFastPathUnsafeCall(true);
 
@@ -1933,7 +1967,24 @@ TR_J9InlinerPolicy::createUnsafeGetWithOffset(TR::ResolvedMethodSymbol *calleeSy
       TR::Node *objBaseAddrNode = addrToAccessNode->getChild(0);
       TR::Node *dataAddrNode = TR::TransformUtil::generateDataAddrLoadTrees(comp(), objBaseAddrNode);
       addrToAccessNode->setChild(0, dataAddrNode);
-      objBaseAddrNode->decReferenceCount(); //correct refcount     
+      objBaseAddrNode->decReferenceCount(); //correct refcount
+
+      //TESTING PURPOSES ONLY
+      //subtract header size from offset
+      J9JavaVM *vm = comp()->fej9()->getJ9JITConfig()->javaVM;
+
+      TR::Node *oldOffset = addrToAccessNode->getChild(1);
+
+      if (oldOffset->getOpCode().isLoadConst())
+      {
+         int64_t adjustedOffsetConst = oldOffset->getConstValue() - vm->unsafeIndexableHeaderSize;
+         oldOffset->setConstValue(adjustedOffsetConst);
+      }
+      else
+      {
+         TR::Node *adjustedOffset = TR::Node::create(TR::ladd, 2, oldOffset, TR::Node::lconst(-vm->unsafeIndexableHeaderSize));
+         addrToAccessNode->setChild(1, adjustedOffset);
+      }
    }
 #endif /* J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION */
 
