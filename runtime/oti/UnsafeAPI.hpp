@@ -604,9 +604,9 @@ public:
 	static VMINLINE j9object_t
 	compareAndExchangeObject(J9VMThread *currentThread, MM_ObjectAccessBarrierAPI *objectAccessBarrier, j9object_t object, UDATA offset, j9object_t *compareValue, j9object_t *swapValue)
 	{
-		if (J9_UNEXPECTED(NULL != object)) {
+		/*if (J9_UNEXPECTED(NULL != object)) {
 			currentThread->javaVM->internalVMFunctions->triggerAssertion(currentThread, "object is null");
-		}
+		}*/
 
 		j9object_t result = NULL;
 

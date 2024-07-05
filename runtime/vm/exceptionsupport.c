@@ -1316,8 +1316,8 @@ setCRIUSingleThreadModeJVMCRIUException(J9VMThread *vmThread, U_32 moduleName, U
 }
 #endif /* defined(J9VM_OPT_CRIU_SUPPORT) */
 
-void
+/*void
 triggerAssertion(J9VMThread *currentThread, const char *message)
 {
 	Assert_VM_assertionFailure(currentThread, message);
-}
+}*/
