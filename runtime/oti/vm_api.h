@@ -1151,8 +1151,8 @@ setCRIUSingleThreadModeJVMCRIUException(J9VMThread *vmThread, U_32 moduleName, U
  *
  * @return void
  */
-void
-triggerAssertion(J9VMThread *currentThread, const char* message);
+//void
+//triggerAssertion(J9VMThread *currentThread, const char* message);
 
 /* ---------------- extendedMessageNPE.cpp ---------------- */
 
