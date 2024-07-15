@@ -310,8 +310,6 @@ class TR_J9InlinerPolicy : public OMR_InlinerPolicy
        * \param isUnsafeGet A \bool value indicating whether the call represents an
        *           \c Unsafe.get* operation &mdash; \c true &mdash; or an
        *           \c Unsafe.put* operation &mdash; \c false.
-       * \param arrayTestNeeded Indicates whether an array test needs to be generated
-       *           for the type of the \c Object
        * \param arrayBlockNeeded Indicates whether a separate access block needs to be
        *           generated to handle the case where the \c Object is an array
        * \param typeTestsNeeded Indicates whether any type tests for \c Object need to
@@ -323,8 +321,7 @@ class TR_J9InlinerPolicy : public OMR_InlinerPolicy
                                   TR::TreeTop* prevTreeTop, TR::SymbolReference* newSymbolReferenceForAddress,
                                   TR::TreeTop* directAccessTreeTop, TR::TreeTop* arraydirectAccessTreeTop,
                                   TR::TreeTop* indirectAccessTreeTop, bool needNullCheck, bool isUnsafeGet,
-                                  bool arrayTestNeeded, bool arrayBlockNeeded, bool typeTestsNeeded,
-                                  TR::Node* orderedCallNode);
+                                  bool arrayBlockNeeded, bool typeTestsNeeded, TR::Node* orderedCallNode);
       virtual bool callMustBeInlined(TR_CallTarget *calltarget);
       virtual bool callMustBeInlinedInCold(TR_ResolvedMethod *method);
       bool mustBeInlinedEvenInDebug(TR_ResolvedMethod * calleeMethod, TR::TreeTop *callNodeTreeTop);

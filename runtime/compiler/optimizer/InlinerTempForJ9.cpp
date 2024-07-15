@@ -852,24 +852,23 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
                                        TR::TreeTop* arrayDirectAccessTreeTop,
                                        TR::TreeTop* indirectAccessTreeTop,
                                        bool needNullCheck, bool isUnsafeGet,
-                                       bool arrayTestNeeded, bool arrayBlockNeeded,
-                                       bool typeTestsNeeded,
+                                       bool arrayBlockNeeded, bool typeTestsNeeded,
                                        TR::Node* orderedCallNode = NULL)
    {
    // There are 4 possible cases determining which checks and blocks should be added to the generated IL trees:
-   // 1.) typeTestsNeeded && arrayTestNeeded && arrayBlockNeeded
+   // 1.) typeTestsNeeded && arrayBlockNeeded
    //     (i.e.: object type is unknown at compile time AND (offheap OR data element size < 4 (byte, short)))
    //     - tests: NULL test, Array test, Lowtag test
    //     - blocks: arrayDirectAccess, directAccess, indirectAccess
-   // 2.) typeTestsNeeded && !arrayTestNeeded && !arrayBlockNeeded
+   // 2.) typeTestsNeeded && !arrayBlockNeeded
    //     (i.e.: object type is unknown at compile time AND gencon AND data element size >= 4 (int, long))
    //     - tests: Lowtag test, NULL test, Class test
    //     - blocks: directAccess, indirectAccess
-   // 3.) !typeTestsNeeded && !arrayTestNeeded && arrayBlockNeeded
+   // 3.) !typeTestsNeeded && arrayBlockNeeded
    //     (i.e.: object is known to be array at compile time AND (offheap OR data element size < 4 (byte, short)))
    //     - tests: NULL test
    //     - blocks: arrayDirectAccess, directAccess
-   // 4.) !typeTestsNeeded && !arrayTestNeeded && !arrayBlockNeeded
+   // 4.) !typeTestsNeeded && !arrayBlockNeeded
    //     (i.e.: object is known to be non-array at compile time)
    //     - tests: none
    //     - blocks: directAccess
@@ -910,7 +909,7 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
    // setting of low-order bit of offset) - and whether direct or indirect access IL will
    // be placed on the fall-through path of the first branch.
    //
-   if (arrayTestNeeded && arrayBlockNeeded) // CASE (1)
+   if (typeTestsNeeded && arrayBlockNeeded) // CASE (1)
       {
       firstComparisonTree = nullComparisonTree;
       branchTargetTree = arrayDirectAccessTreeTop;
@@ -958,7 +957,7 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
    TR::Block *indirectAccessBlock = NULL;
    TR::Block *directAccessBlock = NULL;
 
-   if (arrayTestNeeded && arrayBlockNeeded) // CASE (1)
+   if (typeTestsNeeded && arrayBlockNeeded) // CASE (1)
       {
       directAccessBlock = beforeCallBlock->getNextBlock();
 
@@ -1028,7 +1027,7 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
    TR::TreeTop *isClassTreeTop;
    TR::Block *isClassBlock;
    // If we need conversion or java/lang/Class is not loaded yet, we generate old sequence of tests
-   if (arrayTestNeeded)
+   if (typeTestsNeeded && arrayBlockNeeded)
       {
       //Generating block for lowTagCmpTree
       TR::Block *lowTagCmpBlock =
@@ -1113,7 +1112,7 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
    if (indirectAccessBlock)
       cfg->removeEdge(beforeCallBlock, indirectAccessBlock);
 
-   if (arrayTestNeeded && arrayBlockNeeded)
+   if (typeTestsNeeded && arrayBlockNeeded)
       cfg->removeEdge(nullComparisonBlock, arrayDirectAccessBlock);
 
    if (needNullCheck)
@@ -1283,13 +1282,6 @@ TR_J9InlinerPolicy::createUnsafePutWithOffset(TR::ResolvedMethodSymbol *calleeSy
    bool arrayBlockNeeded = (conversionNeeded || javaLangClass == NULL || TR::Compiler->om.isOffHeapAllocationEnabled() && comp()->target().is64Bit()) &&
                            (objTypeUnknown || objTypeSig[0] == '[');
 
-   // We need to generate IL for the array test if we have determined that IL type tests are needed (i.e.: typeTestsNeeded == true) AND
-   // a separate block is needed to handle array access (i.e.: arrayBlockNeeded == true) AND at least one of the following conditions holds:
-   // - conversionNeeded == true
-   // - javaLangClass == NULL
-   // - offheap is enabled
-   bool arrayTestNeeded = typeTestsNeeded && arrayBlockNeeded && (conversionNeeded || javaLangClass == NULL || (TR::Compiler->om.isOffHeapAllocationEnabled() && comp()->target().is64Bit()));
-
    // Since the block has to be split, we need to create temps for the arguments to the call
    for (int i = 0; i < unsafeCall->getNumChildren(); i++)
       {
@@ -1378,16 +1370,16 @@ TR_J9InlinerPolicy::createUnsafePutWithOffset(TR::ResolvedMethodSymbol *calleeSy
       }
 
    // We need to generate an arrayDirectAccessBlock AND a directAccessBlock in the following cases:
-   // 1.) arrayTestNeeded == true: arrayDirectAccessBlock used for array access,
-   //                               directAccessBlock used for non-array/non-class object access
-   // 2.) !arrayTestNeeded && arrayBlockNeeded: arrayDirectAccessBlock used for array access,
-   //                                            directAccessBlock used if object is NULL
+   // 1.) typeTestsNeeded && arrayBlockNeeded: arrayDirectAccessBlock used for array access,
+   //                                          directAccessBlock used for non-array/non-class object access
+   // 2.) !typeTestsNeeded && arrayBlockNeeded: arrayDirectAccessBlock used for array access,
+   //                                           directAccessBlock used if object is NULL
    // Otherwise, only the directAccessBlock is needed.
    TR::TreeTop* arrayDirectAccessTreeTop;
 
-   if (conversionNeeded && (arrayTestNeeded|| arrayBlockNeeded))
+   if (conversionNeeded && arrayBlockNeeded)
       arrayDirectAccessTreeTop = genDirectAccessCodeForUnsafeGetPut(unsafeNodeWithConversion, conversionNeeded, false);
-   else if (arrayTestNeeded || arrayBlockNeeded)
+   else if (arrayBlockNeeded)
       arrayDirectAccessTreeTop = genDirectAccessCodeForUnsafeGetPut(unsafeNode, false, false);
    else
       arrayDirectAccessTreeTop = NULL;
@@ -1467,8 +1459,8 @@ TR_J9InlinerPolicy::createUnsafePutWithOffset(TR::ResolvedMethodSymbol *calleeSy
    genCodeForUnsafeGetPut(unsafeAddress, offset, type, callNodeTreeTop,
                           prevTreeTop, newSymbolReferenceForAddress,
                           directAccessTreeTop, arrayDirectAccessTreeTop,
-                          indirectAccessTreeTop, needNullCheck, false, conversionNeeded,
-                          arrayTestNeeded, arrayBlockNeeded, typeTestsNeeded,
+                          indirectAccessTreeTop, needNullCheck, false,
+                          arrayBlockNeeded, typeTestsNeeded,
                           orderedCallNode);
 
 
@@ -1857,17 +1849,10 @@ TR_J9InlinerPolicy::createUnsafeGetWithOffset(TR::ResolvedMethodSymbol *calleeSy
    bool typeTestsNeeded = objTypeUnknown || objClass == javaLangClass;
 
    // We need to generate arrayDirectAccessBlock if BOTH of following conditions hold:
-   // - conversionNeeded == true OR javaLangClass == NULL OR offheap is enabled
+   // - conversionNeeded == true OR offheap is enabled
    // - object is known be an array at compile time OR object type is unknown at compile time
-   bool arrayBlockNeeded = (conversionNeeded || javaLangClass == NULL || TR::Compiler->om.isOffHeapAllocationEnabled() && comp()->target().is64Bit()) &&
+   bool arrayBlockNeeded = (conversionNeeded || TR::Compiler->om.isOffHeapAllocationEnabled() && comp()->target().is64Bit()) &&
                            (objTypeUnknown || objTypeSig[0] == '[');
-
-   // We need to generate IL for the array test if we have determined that IL type tests are needed (i.e.: typeTestsNeeded == true) AND
-   // a separate block is needed to handle array access (i.e.: arrayBlockNeeded == true) AND at least one of the following conditions holds:
-   // - conversionNeeded == true
-   // - javaLangClass == NULL
-   // - offheap is enabled
-   bool arrayTestNeeded = typeTestsNeeded && arrayBlockNeeded && (conversionNeeded || javaLangClass == NULL || (TR::Compiler->om.isOffHeapAllocationEnabled() && comp()->target().is64Bit()));
 
    TR::TreeTop *prevTreeTop = callNodeTreeTop->getPrevTreeTop();
    TR::SymbolReference *newSymbolReferenceForAddress = NULL;
@@ -1949,16 +1934,16 @@ TR_J9InlinerPolicy::createUnsafeGetWithOffset(TR::ResolvedMethodSymbol *calleeSy
       genDirectAccessCodeForUnsafeGetPut(callNodeTreeTop->getNode(), false, true);
 
    // We need to generate an arrayDirectAccessBlock AND a directAccessBlock in the following cases:
-   // 1.) arrayTestNeeded == true: arrayDirectAccessBlock used for array access,
+   // 1.) typeTestsNeeded && arrayBlockNeeded: arrayDirectAccessBlock used for array access,
    //                               directAccessBlock used for non-array/non-class object access
-   // 2.) !arrayTestNeeded && arrayBlockNeeded: arrayDirectAccessBlock used for array access,
+   // 2.) !typeTestsNeeded && arrayBlockNeeded: arrayDirectAccessBlock used for array access,
    //                                            directAccessBlock used if object is NULL
    // Otherwise, only the directAccessBlock is needed.
    TR::TreeTop* arrayDirectAccessTreeTop;
 
-   if (conversionNeeded && (arrayTestNeeded || arrayBlockNeeded))
+   if (conversionNeeded && arrayBlockNeeded)
       arrayDirectAccessTreeTop = genDirectAccessCodeForUnsafeGetPut(callNodeWithConversion, conversionNeeded, true);
-   else if (arrayTestNeeded || arrayBlockNeeded)
+   else if (arrayBlockNeeded)
       arrayDirectAccessTreeTop = genDirectAccessCodeForUnsafeGetPut(callNodeTreeTop->getNode(), false, true);
    else
       arrayDirectAccessTreeTop = NULL;
@@ -2025,8 +2010,8 @@ TR_J9InlinerPolicy::createUnsafeGetWithOffset(TR::ResolvedMethodSymbol *calleeSy
    genCodeForUnsafeGetPut(unsafeAddress, offset, type, callNodeTreeTop,
                           prevTreeTop, newSymbolReferenceForAddress,
                           directAccessTreeTop, arrayDirectAccessTreeTop,
-                          indirectAccessTreeTop, needNullCheck, false, conversionNeeded,
-                          arrayTestNeeded, arrayBlockNeeded, typeTestsNeeded);
+                          indirectAccessTreeTop, needNullCheck, false,
+                          arrayBlockNeeded, typeTestsNeeded);
 
    for (int32_t j=0; j<unsafeCall->getNumChildren(); j++)
       unsafeCall->getChild(j)->recursivelyDecReferenceCount();
