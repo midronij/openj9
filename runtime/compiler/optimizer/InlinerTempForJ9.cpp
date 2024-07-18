@@ -858,18 +858,18 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
    TR::CFG *cfg = comp()->getFlowGraph();
    TR_OpaqueClassBlock *javaLangClass = comp()->getClassClassPointer(/* isVettedForAOT = */ true);
 
-   // There are 4 possible cases determining which checks and blocks should be added to the generated IL trees:
+   // There are 5 possible cases determining which checks and blocks should be added to the generated IL trees:
    // 1.) typeTestsNeeded && arrayBlockNeeded
    //     (i.e.: object type is unknown at compile time AND (offheap OR data element size < 4 (byte, short)))
    //     - tests: NULL test, Array test, Lowtag test
    //     - blocks: arrayDirectAccess, directAccess, indirectAccess
    // 2.) typeTestsNeeded && !arrayBlockNeeded && javaLangClass != NULL
-   //     (i.e.: object type is unknown at compile time AND gencon AND data element size >= 4 (int, long) AND able to java/lang/Class)
+   //     (i.e.: object type is unknown at compile time AND gencon AND data element size >= 4 (int, long) AND able to get java/lang/Class)
    //     - tests: Lowtag test, NULL test, Class test
    //     - blocks: directAccess, indirectAccess
    // 3.) typeTestsNeeded && !arrayBlockNeeded && javaLangClass == NULL
-   //     (i.e.: object type is unknown at compile time AND gencon AND data element size >= 4 (int, long) AND unable to java/lang/Class)
-   //     - tests: NULL test, Lowtag test
+   //     (i.e.: object type is unknown at compile time AND gencon AND data element size >= 4 (int, long) AND unable to get java/lang/Class)
+   //     - tests: NULL test, Array test, Lowtag test
    //     - blocks: directAccess, indirectAccess
    // 4.) !typeTestsNeeded && arrayBlockNeeded
    //     (i.e.: object is known to be array at compile time AND (offheap OR data element size < 4 (byte, short)))
@@ -1061,29 +1061,23 @@ TR_J9InlinerPolicy::genCodeForUnsafeGetPut(TR::Node* unsafeAddress,
 
       debugTrace(tracer(), "\t In genCodeForUnsafeGetPut, Block %d created for low tag comparison\n", lowTagCmpBlock->getNumber());
 
-      if (arrayBlockNeeded) // CASE (1)
-         {
-         TR::Node *testIsArrayFlag = comp()->fej9()->testIsClassArrayType(vftLoad);
-         TR::Node *isArrayNode = TR::Node::createif(TR::ificmpne, testIsArrayFlag, TR::Node::create(TR::iconst, 0), NULL);
-         isArrayTreeTop = TR::TreeTop::create(comp(), isArrayNode, NULL, NULL);
-         isArrayBlock = TR::Block::createEmptyBlock(vftLoad, comp(), indirectAccessBlock->getFrequency());
-         isArrayBlock->append(isArrayTreeTop);
-         cfg->addNode(isArrayBlock);
-         isArrayNode->setBranchDestination(arrayDirectAccessBlock->getEntry());
+      TR::Node *testIsArrayFlag = comp()->fej9()->testIsClassArrayType(vftLoad);
+      TR::Node *isArrayNode = TR::Node::createif(TR::ificmpne, testIsArrayFlag, TR::Node::create(TR::iconst, 0), NULL);
+      isArrayTreeTop = TR::TreeTop::create(comp(), isArrayNode, NULL, NULL);
+      isArrayBlock = TR::Block::createEmptyBlock(vftLoad, comp(), indirectAccessBlock->getFrequency());
+      isArrayBlock->append(isArrayTreeTop);
+      cfg->addNode(isArrayBlock);
+      isArrayNode->setBranchDestination(arrayBlockNeeded ? arrayDirectAccessBlock->getEntry() : directAccessBlock->getEntry());
 
-         lowTagCmpBlock->getEntry()->insertTreeTopsBeforeMe(isArrayBlock->getEntry(),
-                                                            isArrayBlock->getExit());
-         cfg->addEdge(TR::CFGEdge::createEdge(isArrayBlock, lowTagCmpBlock, trMemory()));
-         cfg->addEdge(TR::CFGEdge::createEdge(isArrayBlock, arrayBlockNeeded ? arrayDirectAccessBlock
-                                                                           : directAccessBlock, trMemory()));
-         cfg->addEdge(TR::CFGEdge::createEdge(beforeCallBlock, isArrayBlock, trMemory()));
+      lowTagCmpBlock->getEntry()->insertTreeTopsBeforeMe(isArrayBlock->getEntry(),
+                                                         isArrayBlock->getExit());
+      cfg->addEdge(TR::CFGEdge::createEdge(isArrayBlock, lowTagCmpBlock, trMemory()));
+      cfg->addEdge(TR::CFGEdge::createEdge(isArrayBlock, arrayBlockNeeded ? arrayDirectAccessBlock
+                                                                        : directAccessBlock, trMemory()));
+      cfg->addEdge(TR::CFGEdge::createEdge(beforeCallBlock, isArrayBlock, trMemory()));
 
-         debugTrace(tracer(), "\t In genCodeForUnsafeGetPut, Block %d created for array check\n", isArrayBlock->getNumber());
-         }
-      else // CASE (3) (i.e.: javaLangClass == NULL)
-         {
-         cfg->addEdge(TR::CFGEdge::createEdge(beforeCallBlock, lowTagCmpBlock, trMemory()));
-         }
+      debugTrace(tracer(), "\t In genCodeForUnsafeGetPut, Block %d created for array check\n", isArrayBlock->getNumber());
+
       }
    else if (typeTestsNeeded) // CASE (2)
       {
