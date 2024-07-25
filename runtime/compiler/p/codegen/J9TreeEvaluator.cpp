@@ -12039,7 +12039,7 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
             }
 
             copyMemNode->setByteCodeInfo(node->getByteCodeInfo());
-            TR::TreeEvaluator::setmemoryEvaluator(copyMemNode, cg, separateDestAndOffset, vm->unsafeIndexableHeaderSize);
+            TR::TreeEvaluator::setmemoryEvaluator(copyMemNode, cg, vm->unsafeIndexableHeaderSize);
 
             if (node->getChild(0)->getRegister())
                cg->decReferenceCount(node->getChild(0));
