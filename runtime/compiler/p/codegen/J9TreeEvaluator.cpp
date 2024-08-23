@@ -11942,7 +11942,11 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
 
             //if offheap is not enabled, we will never need to load dataAddr. So we know for sure that we can calculate the final
             //destination address right away and only pass in three children to setmemoryEvaluator() (dest, len, byteValue)
-            bool loadDataAddr = false;
+
+            //if offheap is not enabled, default to case (1):
+            // - do NOT generate code to load dataAddr
+            // - calculate the final destination address right away and only pass three children into setmemoryEvaluator (dest, len, byteValue)
+            bool mayNeedDataAddrLoad = true;
             bool separateDestAndOffset = false;
 
          #if defined (J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION)
@@ -11977,11 +11981,11 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
                                       TR::Compiler->cls.isInterfaceClass(comp, objClass) || isParameter;
                      }
 
-                  //need to generate code to loadDataAddr in cases (2) and (3) (unless the object is known to be NULL)
-                  loadDataAddr = !dest->isNull() && (objTypeUnknown || objTypeSig[0] == '[');
+                  //need to generate code to load dataAddr in cases (2) and (3) (unless the object is known to be NULL)
+                  mayNeedDataAddrLoad = !dest->isNull() && (objTypeUnknown || objTypeSig[0] == '[');
 
                   //pass in dest and destOffset separately in case (3) only
-                  separateDestAndOffset = loadDataAddr && objTypeUnknown;
+                  separateDestAndOffset = mayNeedDataAddrLoad && objTypeUnknown;
                   }
                else
                   {
@@ -11989,7 +11993,7 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
                   //of dest, we'll need to take the conservative approach and pass dest and destOffset to
                   //setmemoryEvaluator() separately
                   separateDestAndOffset = true;
-                  loadDataAddr = true;
+                  mayNeedDataAddrLoad = true;
                   }
             }
          #endif /* J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION */
@@ -12006,7 +12010,7 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
                {
             #if defined (J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION)
 
-               if (loadDataAddr) // CASE (2) only
+               if (mayNeedDataAddrLoad) // CASE (2) only
                   {
                   //load dataAddr and use as object base address (previously dest)
                   TR::Node *dataAddrNode = J9::TransformUtil::generateDataAddrLoadTrees(comp, dest);
@@ -12016,7 +12020,7 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
             #endif /* J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION */
 
                //three child setup
-               dest = TR::Node::create(TR::aladd, 2, dest, destOffset); //dest += destOffset
+               dest = TR::Node::create(comp->target().is64Bit() ? TR::aladd : TR::aiadd, 2, dest, destOffset); //dest += destOffset
                copyMemNode = TR::Node::createWithSymRef(TR::arrayset, 3, 3, dest, len, byteValue, node->getSymbolReference());
                }
 
