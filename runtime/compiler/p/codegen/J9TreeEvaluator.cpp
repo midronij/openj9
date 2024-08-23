@@ -11937,20 +11937,17 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
             //     cannot determine the final destination address right away, and thus need to keep dest and destOffset separate. In this
             //     case, the node passed in to setmemoryEvaluator() will have four children: dest, destOffset, len, and byteValue.
             //
-            // Note that if the default (gencon) GC policy is being used, dataAddr will never need to be loaded no matter
-            // the type of the object at dest, so all of the above cases will be treated like case (1).
+            // Note that if the default (gencon) GC policy is being used OR if the object is a NULL reference, dataAddr will never need 
+            // to be loaded no matter the type of the object at dest, so all of the above cases will be treated like case (1).
 
-            //if offheap is not enabled, we will never need to load dataAddr. So we know for sure that we can calculate the final
-            //destination address right away and only pass in three children to setmemoryEvaluator() (dest, len, byteValue)
-
-            //if offheap is not enabled, default to case (1):
+            //if offheap is not enabled OR if dest is known to be a NULL reference at compile time, default to case (1):
             // - do NOT to load dataAddr to calculate final destination address
-            // - calculate the final destination address right away and only pass three children into setmemoryEvaluator (dest, len, byteValue)
+            // - calculate the final destination address right away and only pass three children into setmemoryEvaluator()
             bool loadDataAddr = false;
             bool separateDestAndOffset = false;
 
          #if defined (J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION)
-            if (TR::Compiler->om.isOffHeapAllocationEnabled() && comp->target().is64Bit())
+            if (TR::Compiler->om.isOffHeapAllocationEnabled() && comp->target().is64Bit() && (!dest->isNull()))
                {
                if (dest->getSymbolReference() != NULL)
                   {
@@ -11984,13 +11981,14 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
                   //case (2): want to load dataAddr and calculate final dest address right away if both of the following conditions are met:
                   //          1.) Object is known to be an array at compile time
                   //          2.) Object is known to be a non-NULL reference at compile time
-                  loadDataAddr = !objTypeUnknown && objTypeSig[0] == '[' && dest->isNonNull();
+                  loadDataAddr = (!objTypeUnknown) && (objTypeSig[0] == '[') && dest->isNonNull();
 
-                  //case (3): want to keep dest and destOffset separate so that we can perform runtime NULL/array tests if both of the following
-                  //          conditions are met:
+                  //case (3): want to keep dest and destOffset separate so that we can perform runtime NULL/array tests if at least one of
+                  //          the following conditions are met:
                   //          1.) Object type is unknown at compile time
-                  //          2.) Object type is NOT known to be a NULL reference at compile time
-                  separateDestAndOffset = objTypeUnknown && !dest->isNull();
+                  //          2.) Object is known to be an array at compile time AND 
+                  //              it is NOT known that the object is a non-NULL reference at compile time
+                  separateDestAndOffset = objTypeUnknown || ((objTypeSig[0] == '[') && (!dest->isNonNull()));
                   }
                else
                   {
