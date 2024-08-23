@@ -11946,7 +11946,7 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
             //if offheap is not enabled, default to case (1):
             // - do NOT generate code to load dataAddr
             // - calculate the final destination address right away and only pass three children into setmemoryEvaluator (dest, len, byteValue)
-            bool mayNeedDataAddrLoad = true;
+            bool mayNeedDataAddrLoad = false;
             bool separateDestAndOffset = false;
 
          #if defined (J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION)
@@ -11966,7 +11966,7 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
                   // 4.) The signature belongs to a parameter of the calling method, which is a problem because
                   //     parameters can share slots with variables of other, potentially incompatible types
                   bool objTypeUnknown;
-                  TR_OpaqueClasBlock *objClass = NULL;
+                  TR_OpaqueClassBlock *objClass = NULL;
 
                   if (objTypeSig == NULL)
                      {
@@ -11984,8 +11984,8 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
                   //need to generate code to load dataAddr in cases (2) and (3) (unless the object is known to be NULL)
                   mayNeedDataAddrLoad = !dest->isNull() && (objTypeUnknown || objTypeSig[0] == '[');
 
-                  //pass in dest and destOffset separately in case (3) only
-                  separateDestAndOffset = mayNeedDataAddrLoad && objTypeUnknown;
+                  //pass in dest and destOffset separately in case (3) OR in case (2) if we don't know for sure that the object is non-NULL
+                  separateDestAndOffset = mayNeedDataAddrLoad && (objTypeUnknown || !dest->isNonNull());
                   }
                else
                   {
@@ -12019,8 +12019,12 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
 
             #endif /* J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION */
 
+               //destOffset is a long, so on 32 bit systems we need a conversion before we can add it to dest
+               if (comp->target().is32Bit())
+                  destOffset = TR::Node::create(TR::l2i, 1, destOffset);
+
                //three child setup
-               dest = TR::Node::create(comp->target().is64Bit() ? TR::aladd : TR::aiadd, 2, dest, destOffset); //dest += destOffset
+               dest = TR::Node::create(comp->target().is32Bit() ? TR::aiadd : TR::aladd, 2, dest, destOffset); //dest += destOffset
                copyMemNode = TR::Node::createWithSymRef(TR::arrayset, 3, 3, dest, len, byteValue, node->getSymbolReference());
                }
 
