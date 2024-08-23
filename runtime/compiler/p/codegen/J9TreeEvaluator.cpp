@@ -11944,9 +11944,9 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
             //destination address right away and only pass in three children to setmemoryEvaluator() (dest, len, byteValue)
 
             //if offheap is not enabled, default to case (1):
-            // - do NOT generate code to load dataAddr
+            // - do NOT to load dataAddr to calculate final destination address
             // - calculate the final destination address right away and only pass three children into setmemoryEvaluator (dest, len, byteValue)
-            bool mayNeedDataAddrLoad = false;
+            bool loadDataAddr = false;
             bool separateDestAndOffset = false;
 
          #if defined (J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION)
@@ -11981,11 +11981,16 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
                                       TR::Compiler->cls.isInterfaceClass(comp, objClass) || isParameter;
                      }
 
-                  //need to generate code to load dataAddr in cases (2) and (3) (unless the object is known to be NULL)
-                  mayNeedDataAddrLoad = !dest->isNull() && (objTypeUnknown || objTypeSig[0] == '[');
+                  //case (2): want to load dataAddr and calculate final dest address right away if both of the following conditions are met:
+                  //          1.) Object is known to be an array at compile time
+                  //          2.) Object is known to be a non-NULL reference at compile time
+                  loadDataAddr = !objTypeUnknown && objTypeSig[0] == '[' && dest->isNonNull();
 
-                  //pass in dest and destOffset separately in case (3) OR in case (2) if we don't know for sure that the object is non-NULL
-                  separateDestAndOffset = mayNeedDataAddrLoad && (objTypeUnknown || !dest->isNonNull());
+                  //case (3): want to keep dest and destOffset separate so that we can perform runtime NULL/array tests if both of the following
+                  //          conditions are met:
+                  //          1.) Object type is unknown at compile time
+                  //          2.) Object type is NOT known to be a NULL reference at compile time
+                  separateDestAndOffset = objTypeUnknown && !dest->isNull();
                   }
                else
                   {
@@ -11993,7 +11998,6 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
                   //of dest, we'll need to take the conservative approach and pass dest and destOffset to
                   //setmemoryEvaluator() separately
                   separateDestAndOffset = true;
-                  mayNeedDataAddrLoad = true;
                   }
             }
          #endif /* J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION */
@@ -12010,7 +12014,7 @@ J9::Power::CodeGenerator::inlineDirectCall(TR::Node *node, TR::Register *&result
                {
             #if defined (J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION)
 
-               if (mayNeedDataAddrLoad) // CASE (2) only
+               if (loadDataAddr) // CASE (2) only
                   {
                   //load dataAddr and use as object base address (previously dest)
                   TR::Node *dataAddrNode = J9::TransformUtil::generateDataAddrLoadTrees(comp, dest);
