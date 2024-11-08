@@ -248,6 +248,39 @@ MM_VLHGCAccessBarrier::postStoreClassToClassLoader(J9VMThread *vmThread, J9Class
 	}
 }
 
+void
+MM_VLHGCAccessBarrier::copyArrayCritical(J9VMThread *vmThread, GC_ArrayObjectModel *indexableObjectModel,
+	J9InternalVMFunctions *functions, void **data,
+	J9IndexableObject *arrayObject, jboolean *isCopy)
+{
+	I_32 sizeInElements = (I_32)indexableObjectModel->getSizeInElements(arrayObject);
+	UDATA sizeInBytes = indexableObjectModel->getDataSizeInBytes(arrayObject);
+	*data = functions->jniArrayAllocateMemoryFromThread(vmThread, sizeInBytes);
+	if (NULL == *data) {
+		/* better error message here? */
+		functions->setNativeOutOfMemoryError(vmThread, 0, 0);
+	} else {
+		indexableObjectModel->memcpyFromArray(*data, arrayObject, 0, sizeInElements);
+		vmThread->jniCriticalCopyCount += 1;
+		if (NULL != isCopy) {
+			*isCopy = JNI_TRUE;
+		}
+	}
+}
+
+IDATA
+MM_VLHGCAccessBarrier::indexableDataDisplacement(J9VMThread *vmThread, J9IndexableObject *src, J9IndexableObject *dst)
+{
+	IDATA displacement = 0;
+
+	Assert_MM_true(vmThread->isVirtualLargeObjectHeapEnabled);
+	/* Adjacency check against dst object since src object may be overwritten during sliding compaction. */
+	if (_extensions->indexableObjectModel.isDataAdjacentToHeader(dst)) {
+		displacement = MM_ObjectAccessBarrier::indexableDataDisplacement(vmThread, src, dst);
+	}
+	return displacement;
+}
+
 void*
 MM_VLHGCAccessBarrier::jniGetPrimitiveArrayCritical(J9VMThread* vmThread, jarray array, jboolean *isCopy)
 {

@@ -202,6 +202,22 @@ GC_ArrayletObjectModel::shouldFixupDataAddrForContiguous(MM_ForwardedHeader *for
 }
 
 #if defined(J9VM_ENV_DATA64)
+bool
+GC_ArrayletObjectModel::isDataAdjacentToHeader(J9IndexableObject *arrayPtr)
+{
+	uintptr_t dataSizeInBytes = getDataSizeInBytes(arrayPtr);
+	return isDataAdjacentToHeader(dataSizeInBytes);
+}
+
+bool
+GC_ArrayletObjectModel::isDataAdjacentToHeader(uintptr_t dataSizeInBytes)
+{
+	MM_GCExtensionsBase *extensions = MM_GCExtensionsBase::getExtensions(_omrVM);
+	uintptr_t minimumSpineSizeAfterGrowing = extensions->getObjectAlignmentInBytes();
+	return ((UDATA_MAX == _largestDesirableArraySpineSize)
+			|| (dataSizeInBytes <= (_largestDesirableArraySpineSize - minimumSpineSizeAfterGrowing - contiguousIndexableHeaderSize())));
+}
+
 void
 GC_ArrayletObjectModel::AssertArrayPtrIsIndexable(J9IndexableObject *arrayPtr)
 {

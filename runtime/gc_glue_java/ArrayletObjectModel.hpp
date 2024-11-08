@@ -1236,6 +1236,26 @@ public:
 	 */
 	void fixupInternalLeafPointersAfterCopy(J9IndexableObject *destinationPtr, J9IndexableObject *sourcePtr);
 
+#if defined(J9VM_ENV_DATA64)
+	/**
+	 * Used to determine if the array data is adjacent to its header or in offheap.
+	 * The determination is based on the actual value of dataAddr field in the header.
+	 *
+	 * @param arrayPtr Pointer to the indexable object
+	 * @return true if the arraylet data is adjacent to the header, false otherwise
+	 */
+	bool isDataAdjacentToHeader(J9IndexableObject *arrayPtr);
+
+	/**
+	 * Used to determine if the array data should be adjacent to its header or in offheap.
+	 * The determination is based on the size, same how it would be done during the allocation of an object of such a size.
+	 *
+	 * @param dataSizeInBytes the size of data in an indexable object, in bytes, including leaves and alignment padding
+	 * @return true if based on the value of dataSizeInBytes, the arraylet data is adjacent to the header, false otherwise
+	 */
+	bool isDataAdjacentToHeader(uintptr_t dataSizeInBytes);
+#endif /* defined(J9VM_ENV_DATA64) */
+
 	/**
 	 * Check if the arraylet data is adjacent to the header.
 	 * Mostly used for the detection of camouflaged contiguous arrays that exist with virtualLargeObjectHeap enabled.
