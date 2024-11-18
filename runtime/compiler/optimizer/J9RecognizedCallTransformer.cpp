@@ -700,10 +700,7 @@ void J9::RecognizedCallTransformer::processUnsafeAtomicCall(TR::TreeTop* treetop
          {
          //generate array check treetop
          TR::Node *vftLoad = TR::Node::createWithSymRef(TR::aloadi, 1, 1,
-                                                        TR::Node::createWithSymRef(objectNode,
-                                                                                   TR::aload,
-                                                                                   0,
-                                                                                   objectNode->getSymbolReference()),
+                                                        objectNode->duplicateTree(),
                                                         comp()->getSymRefTab()->findOrCreateVftSymbolRef());
 
          isObjectArrayNode = TR::Node::createif(TR::ificmpne,
