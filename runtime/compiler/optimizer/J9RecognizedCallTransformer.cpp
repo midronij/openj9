@@ -699,7 +699,6 @@ void J9::RecognizedCallTransformer::processUnsafeAtomicCall(TR::TreeTop* treetop
       if (TR::Compiler->om.isOffHeapAllocationEnabled() && comp()->target().is64Bit())
          {
          //generate array check treetop
-         TR::Node *constNode = TR::Node::lconst(unsafeCall, ~(J9_SUN_FIELD_OFFSET_MASK));
          TR::Node *vftLoad = TR::Node::createWithSymRef(TR::aloadi, 1, 1,
                                                         TR::Node::createWithSymRef(objectNode,
                                                                                    TR::aload,
