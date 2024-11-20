@@ -284,20 +284,13 @@ bool TR_UnsafeFastPath::tryTransformUnsafeAtomicCallInVarHandleAccessMethod(TR::
          if (isUnsafeCallerAccessingArrayElement(callerMethod) && TR::Compiler->om.isOffHeapAllocationEnabled() && comp()->target().is64Bit())
             {
             TR::Node *object = node->getChild(1);
-            TR::Node *offset = node->getChild(2);
 
             TR::Node *baseAddr = TR::TransformUtil::generateDataAddrLoadTrees(comp(), object);
-
-            unsafeAddress = comp()->target().is32Bit() ? TR::Node::create(node, TR::aiadd, 2, baseAddr, TR::Node::create(node, TR::l2i, 1, offset)) :
-                                                         TR::Node::create(node, TR::aladd, 2, baseAddr, offset);
-            unsafeAddress->setIsInternalPointer(true);
-
             node->setChild(1, baseAddr);
 
             //correct refcounts
             object->decReferenceCount();
             baseAddr->incReferenceCount();
-
             }
       #endif /* J9VM_GC_ENABLE_SPARSE_HEAP_ALLOCATION */
 
