@@ -288,7 +288,8 @@ bool TR_UnsafeFastPath::tryTransformUnsafeAtomicCallInVarHandleAccessMethod(TR::
 
             TR::Node *baseAddr = TR::TransformUtil::generateDataAddrLoadTrees(comp(), object);
 
-            unsafeAddress = TR::Node::create(node, TR::aladd, 2, baseAddr, offset);
+            unsafeAddress = comp()->target().is32Bit() ? TR::Node::create(node, TR::aiadd, 2, baseAddr, TR::Node::create(node, TR::l2i, 1, offset)) :
+                                                         TR::Node::create(node, TR::aladd, 2, baseAddr, offset);
             unsafeAddress->setIsInternalPointer(true);
 
             node->setChild(1, baseAddr);
