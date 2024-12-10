@@ -137,7 +137,6 @@ ifeq (,$(findstring xlclang++,$(notdir $(CXX))))
 else
   # xlclang++ options
   CXXFLAGS += -qxlcompatmacros -fno-rtti -fno-exceptions
-  CXXFLAGS += -qxlcompatmacros -fno-rtti -fno-exceptions
 endif
 ifeq ($(OMR_ENV_OPENXL),1)
   # openxl options
