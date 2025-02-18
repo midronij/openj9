@@ -551,6 +551,10 @@ public:
 	virtual void doObjectInVirtualLargeObjectHeap(J9Object *objectPtr, bool *sparseHeapAllocation);
 #endif /* defined(J9VM_GC_SPARSE_HEAP_ALLOCATION) */
 	
+	virtual bool isDataAdjacentToHeader(J9IndexableObject *src, J9IndexableObject *dst) {
+		Assert_MM_unreachable();
+	}
+
 	/**
 	 * Called for each object stack slot. Subclasses may override.
 	 * 

@@ -45,6 +45,7 @@
 #include "ObjectModel.hpp"
 #include "SublistFragment.hpp"
 #include "ForwardedHeader.hpp"
+#include "RootScanner.hpp"
 
 MM_VLHGCAccessBarrier *
 MM_VLHGCAccessBarrier::newInstance(MM_EnvironmentBase *env)
@@ -249,17 +250,20 @@ MM_VLHGCAccessBarrier::postStoreClassToClassLoader(J9VMThread *vmThread, J9Class
 }
 
 IDATA
-MM_VLHGCAccessBarrier::indexableDataDisplacement(J9VMThread *vmThread, J9IndexableObject *src, J9IndexableObject *dst)
+MM_VLHGCAccessBarrier::indexableDataDisplacement(J9StackWalkState *walkState, J9IndexableObject *src, J9IndexableObject *dst)
 {
 	IDATA displacement = 0;
 
 #if defined(J9VM_ENV_DATA64)
 	Assert_MM_true(_extensions->isVirtualLargeObjectHeapEnabled);
-	/* Adjacency check against dst object since src object may be overwritten during sliding compaction. */
-	if (_extensions->indexableObjectModel.isDataAdjacentToHeader(dst))
+
+	/* If we implement concurrent copy-forward, which will require copying of dataAddr before forwarding, simplify this to check adjacency against dst always. */
+	MM_RootScanner *rootScanner = ((StackIteratorData *)walkState->userData3)->rootScanner;
+	if (rootScanner->isDataAdjacentToHeader(src, dst))
+	//if (_extensions->indexableObjectModel.isDataAdjacentToHeader(dst))
 #endif /* defined(J9VM_ENV_DATA64) */
 	{
-		displacement = MM_ObjectAccessBarrier::indexableDataDisplacement(vmThread, src, dst);
+		displacement = MM_ObjectAccessBarrier::indexableDataDisplacement(walkState, src, dst);
 	}
 	return displacement;
 }

@@ -1384,12 +1384,11 @@ MM_WriteOnceCompactor::fixupPointerArrayObject(MM_EnvironmentVLHGC* env, J9Objec
 		 * (its dataAddr field will still be NULL), with offheap heap we will fixup camouflaged discontiguous arrays) - DM, like default
 		 * balanced, wants to fixup only truly contiguous arrays
 		 */
-		if (indexableObjectModel->isDataAdjacentToHeader((J9IndexableObject *)objectPtr)
 #if defined(J9VM_ENV_DATA64)
-			|| (indexableObjectModel->isVirtualLargeObjectHeapEnabled()
-				&& (NULL != indexableObjectModel->getDataAddrForContiguous((J9IndexableObject *)objectPtr)))
+		if (!indexableObjectModel->isVirtualLargeObjectHeapEnabled()
+			|| (NULL != indexableObjectModel->getDataAddrForContiguous((J9IndexableObject *)objectPtr)))
 #endif /* defined(J9VM_ENV_DATA64) */
-		 ) {
+		{
 			uintptr_t elementsToWalk = indexableObjectModel->getSizeInElements((J9IndexableObject *)objectPtr);
 			GC_PointerArrayIterator it(_javaVM, objectPtr);
 			uintptr_t previous = 0;
@@ -1715,6 +1714,14 @@ public:
 		}
 	}
 #endif /* J9VM_GC_FINALIZATION */
+
+#if defined(J9VM_ENV_DATA64)
+	virtual bool isDataAdjacentToHeader(J9IndexableObject *src, J9IndexableObject *dst) {
+		/* Against dst object since src object may be overwritten. */
+		return _extensions->indexableObjectModel.isDataAdjacentToHeader(dst);
+	}
+#endif
+
 };
 
 void

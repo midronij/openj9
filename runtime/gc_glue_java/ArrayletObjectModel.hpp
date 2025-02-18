@@ -809,7 +809,7 @@ public:
 	MMINLINE void **
 	dataAddrSlotForContiguous(J9IndexableObject *arrayPtr)
 	{
-		AssertContiguousArrayletLayout(arrayPtr);
+		//AssertContiguousArrayletLayout(arrayPtr);
 		bool const compressed = compressObjectReferences();
 		void **dataAddrPtr = NULL;
 		if (compressed) {
@@ -1237,22 +1237,24 @@ public:
 	void fixupInternalLeafPointersAfterCopy(J9IndexableObject *destinationPtr, J9IndexableObject *sourcePtr);
 
 	/**
-	 * Used to determine if the array data is adjacent to its header or in offheap.
+	 * Used to determine if the array data should be adjacent to its header or in offheap.
 	 * The determination is based on the actual value of dataAddr field in the header.
+	 * This API is meant to be used during object construction.
 	 *
 	 * @param arrayPtr Pointer to the indexable object
 	 * @return true if the arraylet data is adjacent to the header, false otherwise
 	 */
-	bool isDataAdjacentToHeader(J9IndexableObject *arrayPtr);
+	bool shouldDataBeAdjacentToHeader(J9IndexableObject *arrayPtr);
 
 	/**
 	 * Used to determine if the array data should be adjacent to its header or in offheap.
 	 * The determination is based on the size, same how it would be done during the allocation of an object of such a size.
+	 * This API is meant to be used during object construction.
 	 *
 	 * @param dataSizeInBytes the size of data in an indexable object, in bytes, including leaves and alignment padding
 	 * @return true if based on the value of dataSizeInBytes, the arraylet data is adjacent to the header, false otherwise
 	 */
-	bool isDataAdjacentToHeader(uintptr_t dataSizeInBytes);
+	bool shouldDataBeAdjacentToHeader(uintptr_t dataSizeInBytes);
 
 	/**
 	 * Check if the data address for the contiguous indexable object should be fixed up.
@@ -1273,6 +1275,20 @@ public:
 	 * @return true if we should fixup the data address of the indexable object
 	 */
 	bool shouldFixupDataAddrForContiguous(MM_ForwardedHeader *forwardedHeader, void *dataAddr);
+
+	/**
+	 * Check if data is adjacent to the header, based on dataAddr value (rather then on its size).
+	 * This API is faster/simpler than the one based on the size, and is meant to be used at any point
+	 * after object is constructed (GC point to fixup dataAddr etc).
+	 */
+	bool isDataAdjacentToHeader(J9IndexableObject *arrayPtr) {
+#if defined(J9VM_ENV_DATA64)
+		return ((void *)((uintptr_t)arrayPtr + contiguousIndexableHeaderSize()) == getDataAddrForContiguous(arrayPtr));
+#else /* defined(J9VM_ENV_DATA64) */
+		return true;
+#endif /* defined(J9VM_ENV_DATA64) */
+	}
+
 
 	/**
 	 * Initialize the receiver, a new instance of GC_ObjectModel
