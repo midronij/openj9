@@ -287,7 +287,7 @@ elseif(OMR_OS_AIX)
 		if(CMAKE_C_COMPILER_IS_OPENXL)
 			list(APPEND J9_SHAREDFLAGS -m64)
 		else()
-			list(APPEND J9_SHAREDFLAGS -q64)
+			list(APPEND J9_SHAREDFLAGS -m64)
 		endif()
 		if(OMR_TOOLCONFIG STREQUAL "xlc")
 			# Modify the arch tuning value we inherit from OMR.
