@@ -1637,6 +1637,8 @@ TR_VectorAPIExpansion::boxChild(TR::TreeTop *treeTop, TR::Node *node, uint32_t i
 
    treeTop->insertBefore(TR::TreeTop::create(comp(), TR::Node::create(TR::treetop, 1, newArray)));
 
+   logprintf(_trace, comp()->log(), "JACKIE: inserted newarray node in treetop at node %p\n", treeTop->getNode());
+
    // Generate vector store to the payload array
    TR::DataType opCodeType = (objectType == Vector) ?
                                TR::DataType::createVectorType(elementType, vectorLength)
