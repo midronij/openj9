@@ -1569,6 +1569,7 @@ bool
 TR_VectorAPIExpansion::boxChild(TR::TreeTop *treeTop, TR::Node *node, uint32_t i, bool checkBoxing)
    {
    TR::Node *child = node->getChild(i);
+   logprintf(_trace, comp()->log(), "JACKIE: called boxChild on node %p, child being boxed is %p\n", node, child);
 
    TR::DataType elementType;
    vec_sz_t bitsLength;
@@ -1635,7 +1636,10 @@ TR_VectorAPIExpansion::boxChild(TR::TreeTop *treeTop, TR::Node *node, uint32_t i
    TR::SymbolReference *symRef = comp()->getSymRefTab()->findOrCreateNewArraySymbolRef(comp()->getMethodSymbol());
    TR::Node *newArray = TR::Node::createWithSymRef(TR::newarray, 2, lenConst, typeConst, 0, symRef);
 
-   treeTop->insertBefore(TR::TreeTop::create(comp(), TR::Node::create(TR::treetop, 1, newArray)));
+   TR::Node *newArrayNode = TR::Node::create(TR::treetop, 1, newArray);
+   treeTop->insertBefore(TR::TreeTop::create(comp(), newArrayNode));
+
+   logprintf(_trace, comp()->log(), "JACKIE: inserted newarray node %p\n", newArrayNode);
 
    // Generate vector store to the payload array
    TR::DataType opCodeType = (objectType == Vector) ?
@@ -1973,6 +1977,8 @@ void TR_VectorAPIExpansion::visitNodeToTransformIL(TR::TreeTop *treeTop, TR::Nod
       }
 
    // Handle non-vectorized nodes by boxing their children
+   logprintf(_trace, log, "JACKIE: Conditions to check if children of %p need to be boxed: boxingAllowed() = %d, vectorizedOrScalarizedNode = %d, opCodeValue == TR::astore = %d, \n", 
+      node, boxingAllowed(), vectorizedOrScalarizedNode, opCodeValue == TR::astore);
    if (boxingAllowed() &&
        !vectorizedOrScalarizedNode &&
        (opCodeValue == TR::astore ||
