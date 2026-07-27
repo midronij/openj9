@@ -848,13 +848,41 @@ TR_OpaqueClassBlock *TR_VectorAPIExpansion::getOpaqueClassBlockFromClassNode(TR:
 
 TR::DataType TR_VectorAPIExpansion::getDataTypeFromClassNode(TR::Compilation *comp, TR::Node *classNode)
 {
-    TR_OpaqueClassBlock *clazz = getOpaqueClassBlockFromClassNode(comp, classNode);
+    //TODO: account for three possible cases:
+    //1.) JDK27+ and Vector -> classNode is iconst
+    //2.) JDK27+ and VectorMask/VectorShuffle(?) -> classNode is icall to Enum.ordinal
+    //3.) JDK26 and below -> classNode is aload of java/lang/Class object (old version)
 
-    if (!clazz)
-        return TR::NoType;
+    if (classNode->getOpCodeValue() == TR::iconst) {
+#if JAVA_SPEC_VERSION >= 27
+        switch (classNode->getConstValue()) {
+            case (0):
+                return TR::Float;
+            case (1):
+                return TR::Double;
+            case (2):
+                return TR::Int8;
+            case (3):
+                return TR::Int16;
+            case (4):
+                return TR::Int32;
+            case (5):
+                return TR::Int64;
+            default:
+                return TR::NoType;
+        }
+#else
+        TR_ASSERT_FATAL(false, "Class node should be iconst only for JDK27 and higher");
+#endif
+    } else {
+        TR_OpaqueClassBlock *clazz = getOpaqueClassBlockFromClassNode(comp, classNode);
 
-    TR_J9VMBase *fej9 = comp->fej9();
-    return fej9->getClassPrimitiveDataType(clazz);
+        if (!clazz)
+            return TR::NoType;
+
+        TR_J9VMBase *fej9 = comp->fej9();
+        return fej9->getClassPrimitiveDataType(clazz);
+    }
 }
 
 TR_VectorAPIExpansion::vapiObjType TR_VectorAPIExpansion::getObjectTypeFromClassNode(TR::Compilation *comp,
