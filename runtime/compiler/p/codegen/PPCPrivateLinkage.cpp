@@ -433,6 +433,8 @@ void J9::Power::PrivateLinkage::mapStack(TR::ResolvedMethodSymbol *method)
     int32_t lowGCOffset = stackIndex;
     TR::GCStackAtlas *atlas = cg()->getStackAtlas();
     int32_t firstLocalGCIndex = atlas->getNumberOfParmSlotsMapped();
+    OMR::Logger *log = comp()->log();
+    bool trace = comp()->getOption(TR_TraceCG);
 
     // map all garbage collected references together so can concisely represent
     // stack maps. They must be mapped so that the GC map index in each local
@@ -441,6 +443,14 @@ void J9::Power::PrivateLinkage::mapStack(TR::ResolvedMethodSymbol *method)
     uint32_t numberOfLocalSlotsMapped = atlas->getNumberOfSlotsMapped() - atlas->getNumberOfParmSlotsMapped();
 
     stackIndex -= numberOfLocalSlotsMapped * TR::Compiler->om.sizeofReferenceAddress();
+
+    uint32_t unalignedStackIndex = stackIndex;
+    stackIndex &= ~0xFu;
+    uint32_t paddingBytes = unalignedStackIndex - stackIndex;
+    if (paddingBytes > 0) {
+	TR_ASSERT((paddingBytes & (TR::Compiler->om.sizeofReferenceAddress() - 1)) == 0, "Padding bytes should be a multiple of slot/pointer size");
+        atlas->setNumberOfSlotsMapped(atlas->getNumberOfSlotsMapped() + paddingBytes / TR::Compiler->om.sizeofReferenceAddress());
+    }
 
     if (comp()->useCompressedPointers()) {
         // If we have any local objects we have to make sure they're aligned properly when compressed pointers are used,
@@ -463,15 +473,17 @@ void J9::Power::PrivateLinkage::mapStack(TR::ResolvedMethodSymbol *method)
     //
     for (localCursor = automaticIterator.getFirst(); localCursor; localCursor = automaticIterator.getNext()) {
         if (localCursor->getGCMapIndex() >= 0) {
-            localCursor->setOffset(stackIndex
-                + TR::Compiler->om.sizeofReferenceAddress() * (localCursor->getGCMapIndex() - firstLocalGCIndex));
+	    int interval = TR::Compiler->om.sizeofReferenceAddress() * (localCursor->getGCMapIndex() - firstLocalGCIndex);
+            localCursor->setOffset(stackIndex + interval);
+            logprintf(trace, log, "mapStack: GC reference local %s (GC index %d) mapped to stack offset %d (0x%x) - adding %d\n",
+                comp()->getDebug()->getName(localCursor), localCursor->getGCMapIndex(), localCursor->getOffset(), localCursor->getOffset(),  interval);
             if (localCursor->getGCMapIndex() == atlas->getIndexOfFirstInternalPointer()) {
                 atlas->setOffsetOfFirstInternalPointer(localCursor->getOffset() - firstLocalOffset);
             }
         }
     }
 
-    method->setObjectTempSlots((lowGCOffset - stackIndex) / TR::Compiler->om.sizeofReferenceAddress());
+    method->setObjectTempSlots((lowGCOffset - stackIndex) / 16 /*TR::Compiler->om.sizeofReferenceAddress()*/);
     lowGCOffset = stackIndex;
 
     // Now map the rest of the locals
@@ -483,10 +495,14 @@ void J9::Power::PrivateLinkage::mapStack(TR::ResolvedMethodSymbol *method)
         if (comp()->target().is64Bit()) {
             if (localCursor->getGCMapIndex() < 0 && localCursor->getSize() != 8) {
                 mapSingleAutomatic(localCursor, stackIndex);
+                logprintf(trace, log, "mapStack: non-GC local %s mapped to stack offset %d (0x%x)\n",
+                    comp()->getDebug()->getName(localCursor), localCursor->getOffset(), localCursor->getOffset());
             }
         } else {
             if (localCursor->getGCMapIndex() < 0 && localCursor->getDataType() != TR::Double) {
                 mapSingleAutomatic(localCursor, stackIndex);
+                logprintf(trace, log, "mapStack: non-GC local %s mapped to stack offset %d (0x%x)\n",
+                    comp()->getDebug()->getName(localCursor), localCursor->getOffset(), localCursor->getOffset());
             }
         }
         localCursor = automaticIterator.getNext();
@@ -500,11 +516,15 @@ void J9::Power::PrivateLinkage::mapStack(TR::ResolvedMethodSymbol *method)
             if (localCursor->getGCMapIndex() < 0 && localCursor->getSize() == 8) {
                 stackIndex -= (stackIndex & 0x4) ? 4 : 0;
                 mapSingleAutomatic(localCursor, stackIndex);
+                logprintf(trace, log, "mapStack: 8-byte non-GC local %s mapped to stack offset %d (0x%x)\n",
+                    comp()->getDebug()->getName(localCursor), localCursor->getOffset(), localCursor->getOffset());
             }
         } else {
             if (localCursor->getGCMapIndex() < 0 && localCursor->getDataType() == TR::Double) {
                 stackIndex -= (stackIndex & 0x4) ? 4 : 0;
                 mapSingleAutomatic(localCursor, stackIndex);
+                logprintf(trace, log, "mapStack: double non-GC local %s mapped to stack offset %d (0x%x)\n",
+                    comp()->getDebug()->getName(localCursor), localCursor->getOffset(), localCursor->getOffset());
             }
         }
         localCursor = automaticIterator.getNext();
@@ -527,6 +547,7 @@ void J9::Power::PrivateLinkage::mapSingleAutomatic(TR::AutomaticSymbol *p, uint3
     if (roundedSize == 0)
         roundedSize = 4;
 
+    roundedSize = 16;
     p->setOffset(stackIndex -= roundedSize);
 }
 
