@@ -435,6 +435,11 @@ void J9::Power::PrivateLinkage::mapStack(TR::ResolvedMethodSymbol *method)
     TR::GCStackAtlas *atlas = cg()->getStackAtlas();
     int32_t firstLocalGCIndex = atlas->getNumberOfParmSlotsMapped();
 
+    OMR::Logger *log = cg()->comp()->log();
+    bool trace = cg()->comp()->getOption(TR_TraceCG);
+
+    logprintf(trace, log, "\nJACKIE: mapStack() called\n");
+
     // map all garbage collected references together so can concisely represent
     // stack maps. They must be mapped so that the GC map index in each local
     // symbol is honoured.
@@ -480,6 +485,8 @@ void J9::Power::PrivateLinkage::mapStack(TR::ResolvedMethodSymbol *method)
     automaticIterator.reset();
     localCursor = automaticIterator.getFirst();
 
+    logprintf(trace, log, "\nJACKIE: Mapping non-double locals\n");
+
     while (localCursor != NULL) {
         if (comp()->target().is64Bit()) {
             if (localCursor->getGCMapIndex() < 0 && localCursor->getSize() != 8) {
@@ -495,6 +502,8 @@ void J9::Power::PrivateLinkage::mapStack(TR::ResolvedMethodSymbol *method)
 
     automaticIterator.reset();
     localCursor = automaticIterator.getFirst();
+
+    logprintf(trace, log, "\nJACKIE: Mapping double-type locals\n");
 
     while (localCursor != NULL) {
         if (comp()->target().is64Bit()) {
@@ -516,6 +525,8 @@ void J9::Power::PrivateLinkage::mapStack(TR::ResolvedMethodSymbol *method)
 
     atlas->setLocalBaseOffset(lowGCOffset - firstLocalOffset);
     atlas->setParmBaseOffset(atlas->getParmBaseOffset() + getOffsetToFirstParm() - firstLocalOffset);
+
+    logprintf(trace, log, "\nJACKIE: mapStack() returning\n");
 }
 
 void J9::Power::PrivateLinkage::mapSingleAutomatic(TR::AutomaticSymbol *p, uint32_t &stackIndex)
@@ -529,6 +540,7 @@ void J9::Power::PrivateLinkage::mapSingleAutomatic(TR::AutomaticSymbol *p, uint3
         roundedSize = 4;
 
     p->setOffset(stackIndex -= roundedSize);
+    logprintf(cg()->comp()->getOption(TR_TraceCG), cg()->comp()->log(), "\nJACKIE: symbol %s of type %s mapped to stack offset %d - roundup = %d, object size = %d, roundedSize = %d, stackIndex = 0x%x\n", cg()->comp()->getDebug()->getName(p), p->getDataType().toString(), p->getOffset(), roundup, p->getSize(), roundedSize, stackIndex);
 }
 
 void J9::Power::PrivateLinkage::setParameterLinkageRegisterIndex(TR::ResolvedMethodSymbol *method)
